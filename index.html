@@ -4,23 +4,58 @@
 <meta charset="UTF-8" />
 <title>Vocabulary List</title>
 <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
-    input { padding: 6px; width: 100%; margin-bottom: 10px; }
-    button { padding: 6px 10px; cursor: pointer; }
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 0 20px; }
+    input { padding: 8px; width: 100%; margin-bottom: 10px; box-sizing: border-box; font-size: 14px; }
+    button { padding: 8px 14px; cursor: pointer; font-size: 14px; }
     .item {
-        padding: 6px 0;
+        padding: 10px 0;
         border-bottom: 1px solid #ddd;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
     .term { font-weight: bold; }
+    .search-container { position: relative; margin-bottom: 30px; }
+    .dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        max-height: 250px;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .dropdown-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .dropdown-item:hover {
+        background-color: #e8f0fe;
+    }
+    .dropdown-item .match-term { font-weight: bold; color: #1a73e8; }
+    .dropdown-item .match-translation { color: #666; margin-left: 8px; }
+    .no-results {
+        padding: 10px 12px;
+        color: #999;
+        font-style: italic;
+    }
 </style>
 </head>
 <body>
 
-<h2>Add Vocabulary</h2>
+<h2>Search Vocabulary</h2>
+<div class="search-container">
+    <input id="searchInput" type="text" placeholder="Type to search terms or translations...">
+    <div id="dropdown" class="dropdown"></div>
+</div>
 
+<h2>Add Vocabulary</h2>
 <input id="termInput" type="text" placeholder="Term">
 <input id="translationInput" type="text" placeholder="Translation">
 <button onclick="addItem()">Add</button>
@@ -32,50 +67,122 @@
     let entries = [];
 
     // Load saved entries
-    const saved = localStorage.getItem("vocab");
-    if (saved) {
-        entries = JSON.parse(saved);
-        renderList();
+    async function loadEntries() {
+        try {
+            const result = await window.storage.get("vocab_entries");
+            if (result && result.value) {
+                entries = JSON.parse(result.value);
+                renderList();
+            }
+        } catch (error) {
+            console.log("No saved entries yet");
+        }
     }
 
-    function addItem() {
+    async function addItem() {
         const term = document.getElementById("termInput").value.trim();
         const translation = document.getElementById("translationInput").value.trim();
         if (!term || !translation) return;
 
         entries.push({ term, translation });
         entries.sort((a, b) => a.term.localeCompare(b.term));
-        save();
+        await saveEntries();
 
         document.getElementById("termInput").value = "";
         document.getElementById("translationInput").value = "";
         renderList();
     }
 
-    function deleteItem(index) {
+    async function deleteItem(index) {
         entries.splice(index, 1);
-        save();
+        await saveEntries();
         renderList();
     }
 
-    function save() {
-        localStorage.setItem("vocab", JSON.stringify(entries));
+    async function saveEntries() {
+        try {
+            await window.storage.set("vocab_entries", JSON.stringify(entries));
+        } catch (error) {
+            console.error("Error saving:", error);
+        }
     }
 
     function renderList() {
         const list = document.getElementById("list");
         list.innerHTML = "";
 
+        if (entries.length === 0) {
+            list.innerHTML = "<p style='color: #999;'>No vocabulary entries yet. Add some above!</p>";
+            return;
+        }
+
         entries.forEach((e, i) => {
             const div = document.createElement("div");
             div.className = "item";
             div.innerHTML = `
-                <span><span class="term">${e.term}</span>: ${e.translation}</span>
+                <span><span class="term">${escapeHtml(e.term)}</span>: ${escapeHtml(e.translation)}</span>
                 <button onclick="deleteItem(${i})">Delete</button>
             `;
             list.appendChild(div);
         });
     }
+
+    function handleSearch() {
+        const searchTerm = document.getElementById("searchInput").value.trim().toLowerCase();
+        const dropdown = document.getElementById("dropdown");
+        
+        if (!searchTerm) {
+            dropdown.style.display = "none";
+            return;
+        }
+
+        const matches = entries.filter(e => 
+            e.term.toLowerCase().includes(searchTerm) || 
+            e.translation.toLowerCase().includes(searchTerm)
+        );
+
+        dropdown.innerHTML = "";
+
+        if (matches.length === 0) {
+            dropdown.innerHTML = '<div class="no-results">No matches found</div>';
+            dropdown.style.display = "block";
+            return;
+        }
+
+        matches.forEach(match => {
+            const div = document.createElement("div");
+            div.className = "dropdown-item";
+            div.innerHTML = `<span class="match-term">${escapeHtml(match.term)}</span><span class="match-translation">— ${escapeHtml(match.translation)}</span>`;
+            div.onmousedown = (e) => {
+                e.preventDefault();
+                document.getElementById("searchInput").value = match.term;
+                dropdown.style.display = "none";
+            };
+            dropdown.appendChild(div);
+        });
+
+        dropdown.style.display = "block";
+    }
+
+    function hideDropdown() {
+        setTimeout(() => {
+            document.getElementById("dropdown").style.display = "none";
+        }, 200);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Set up search input listeners
+    document.getElementById("searchInput").addEventListener("input", handleSearch);
+    document.getElementById("searchInput").addEventListener("focus", handleSearch);
+    document.getElementById("searchInput").addEventListener("blur", hideDropdown);
+
+    // Load entries on start
+    loadEntries();
 </script>
 
 </body>
