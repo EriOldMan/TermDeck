@@ -13,6 +13,12 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        transition: background-color 0.3s;
+    }
+    .item.highlight {
+        background-color: #fff3cd;
+        padding: 10px 8px;
+        margin: 0 -8px;
     }
     .term { font-weight: bold; }
     .input-container { position: relative; margin-bottom: 10px; }
@@ -113,6 +119,7 @@
         entries.forEach((e, i) => {
             const div = document.createElement("div");
             div.className = "item";
+            div.id = `item-${i}`;
             div.innerHTML = `
                 <span><span class="term">${escapeHtml(e.term)}</span>: ${escapeHtml(e.translation)}</span>
                 <button onclick="deleteItem(${i})">Delete</button>
@@ -152,6 +159,14 @@
                 document.getElementById("translationInput").value = match.translation;
                 dropdown.style.display = "none";
                 document.getElementById("translationInput").focus();
+                
+                // Find and highlight the item in the list
+                const itemIndex = entries.findIndex(entry => 
+                    entry.term === match.term && entry.translation === match.translation
+                );
+                if (itemIndex !== -1) {
+                    highlightItem(itemIndex);
+                }
             };
             dropdown.appendChild(div);
         });
@@ -175,6 +190,25 @@
         if (event.key === "Enter") {
             event.preventDefault();
             addItem();
+        }
+    }
+
+    function highlightItem(index) {
+        // Remove previous highlights
+        document.querySelectorAll('.item').forEach(item => {
+            item.classList.remove('highlight');
+        });
+        
+        // Highlight the selected item
+        const itemElement = document.getElementById(`item-${index}`);
+        if (itemElement) {
+            itemElement.classList.add('highlight');
+            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+                itemElement.classList.remove('highlight');
+            }, 3000);
         }
     }
 
