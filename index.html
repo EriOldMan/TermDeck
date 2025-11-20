@@ -47,10 +47,10 @@
 <h2>Add Vocabulary</h2>
 
 <div class="input-container">
-    <input id="termInput" type="text" placeholder="Term">
+    <input id="termInput" type="text" placeholder="Term" onkeypress="handleKeyPress(event)">
     <div id="dropdown" class="dropdown"></div>
 </div>
-<input id="translationInput" type="text" placeholder="Translation">
+<input id="translationInput" type="text" placeholder="Translation" onkeypress="handleKeyPress(event)">
 <button onclick="addItem()">Add</button>
 
 <h2>List</h2>
@@ -169,6 +169,13 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            addItem();
+        }
     }
 
     // Set up term input listeners
