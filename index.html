@@ -60,15 +60,15 @@
     let entries = [];
 
     // Load saved entries
-    async function loadEntries() {
+    function loadEntries() {
         try {
-            const result = await window.storage.get("vocab_entries");
-            if (result && result.value) {
-                entries = JSON.parse(result.value);
+            const saved = localStorage.getItem("vocab_entries");
+            if (saved) {
+                entries = JSON.parse(saved);
                 renderList();
             }
         } catch (error) {
-            console.log("No saved entries yet");
+            console.log("Loading entries:", error);
         }
     }
 
@@ -79,7 +79,7 @@
 
         entries.push({ term, translation });
         entries.sort((a, b) => a.term.localeCompare(b.term));
-        await saveEntries();
+        saveEntries();
 
         document.getElementById("termInput").value = "";
         document.getElementById("translationInput").value = "";
@@ -88,13 +88,14 @@
 
     async function deleteItem(index) {
         entries.splice(index, 1);
-        await saveEntries();
+        saveEntries();
         renderList();
     }
 
-    async function saveEntries() {
+    function saveEntries() {
         try {
-            await window.storage.set("vocab_entries", JSON.stringify(entries));
+            localStorage.setItem("vocab_entries", JSON.stringify(entries));
+            console.log("Saved successfully");
         } catch (error) {
             console.error("Error saving:", error);
         }
