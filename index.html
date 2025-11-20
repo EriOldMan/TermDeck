@@ -23,7 +23,14 @@
 <div id="list"></div>
 
 <script>
-    const entries = [];
+    let entries = [];
+
+    // Load saved data
+    const saved = localStorage.getItem("vocab");
+    if (saved) {
+        entries = JSON.parse(saved);
+        renderList();
+    }
 
     function addItem() {
         const term = document.getElementById('termInput').value.trim();
@@ -32,9 +39,10 @@
         if (!term || !translation) return;
 
         entries.push({ term, translation });
-
-        // Sort alphabetically by term
         entries.sort((a, b) => a.term.localeCompare(b.term));
+
+        // Save
+        localStorage.setItem("vocab", JSON.stringify(entries));
 
         document.getElementById('termInput').value = "";
         document.getElementById('translationInput').value = "";
