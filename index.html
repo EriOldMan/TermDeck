@@ -17,6 +17,36 @@
         padding: 40px 20px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
+        transition: background 0.3s;
+    }
+    
+    body.night-mode {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    
+    .theme-toggle {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        cursor: pointer;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 1001;
+    }
+    
+    .theme-toggle:hover {
+        transform: scale(1.1) rotate(15deg);
+        background: rgba(255, 255, 255, 0.3);
     }
     
     h2 {
@@ -33,6 +63,12 @@
         padding: 24px;
         margin-bottom: 24px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+    
+    body.night-mode .card {
+        background: #2a2a3e;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
     input { 
@@ -45,12 +81,25 @@
         border-radius: 10px;
         transition: all 0.3s;
         font-family: inherit;
+        background: white;
+        color: #333;
+    }
+    
+    body.night-mode input {
+        background: #1a1a2e;
+        border-color: #3a3a4e;
+        color: #e0e0e0;
     }
     
     input:focus {
         outline: none;
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    body.night-mode input:focus {
+        border-color: #8b9eff;
+        box-shadow: 0 0 0 3px rgba(139, 158, 255, 0.2);
     }
     
     button { 
@@ -84,10 +133,20 @@
         transition: all 0.3s;
         border-radius: 8px;
         margin-bottom: 4px;
+        color: #333;
+    }
+    
+    body.night-mode .item {
+        border-bottom: 1px solid #3a3a4e;
+        color: #e0e0e0;
     }
     
     .item:hover {
         background-color: #f8f9ff;
+    }
+    
+    body.night-mode .item:hover {
+        background-color: #3a3a4e;
     }
     
     .item.highlight {
@@ -141,11 +200,21 @@
         margin-top: -10px;
     }
     
+    body.night-mode .dropdown {
+        background: #1a1a2e;
+        border-color: #8b9eff;
+        box-shadow: 0 8px 24px rgba(139, 158, 255, 0.3);
+    }
+    
     .dropdown-item {
         padding: 14px 16px;
         cursor: pointer;
         border-bottom: 1px solid #f0f0f0;
         transition: all 0.2s;
+    }
+    
+    body.night-mode .dropdown-item {
+        border-bottom: 1px solid #3a3a4e;
     }
     
     .dropdown-item:last-child {
@@ -157,10 +226,19 @@
         padding-left: 20px;
     }
     
+    body.night-mode .dropdown-item:hover {
+        background: linear-gradient(90deg, #2a2a4e 0%, #3a3a5e 100%);
+        padding-left: 20px;
+    }
+    
     .dropdown-item .match-term { 
         font-weight: 600;
         color: #667eea;
         font-size: 15px;
+    }
+    
+    body.night-mode .dropdown-item .match-term {
+        color: #8b9eff;
     }
     
     .dropdown-item .match-translation { 
@@ -169,11 +247,19 @@
         font-size: 14px;
     }
     
+    body.night-mode .dropdown-item .match-translation {
+        color: #b0b0b0;
+    }
+    
     .empty-state {
         text-align: center;
         padding: 40px 20px;
         color: #999;
         font-style: italic;
+    }
+    
+    body.night-mode .empty-state {
+        color: #666;
     }
     
     /* Scrollbar styling */
@@ -193,6 +279,8 @@
 </style>
 </head>
 <body>
+
+<button class="theme-toggle" onclick="toggleTheme()">🌙</button>
 
 <h2>✨ Add Vocabulary</h2>
 <div class="card">
@@ -366,6 +454,33 @@
 
     // Load entries on start
     loadEntries();
+    loadTheme();
+    
+    function toggleTheme() {
+        const body = document.body;
+        const themeToggle = document.querySelector('.theme-toggle');
+        
+        body.classList.toggle('night-mode');
+        
+        if (body.classList.contains('night-mode')) {
+            themeToggle.textContent = '☀️';
+            localStorage.setItem('theme', 'night');
+        } else {
+            themeToggle.textContent = '🌙';
+            localStorage.setItem('theme', 'day');
+        }
+    }
+    
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        const body = document.body;
+        const themeToggle = document.querySelector('.theme-toggle');
+        
+        if (savedTheme === 'night') {
+            body.classList.add('night-mode');
+            themeToggle.textContent = '☀️';
+        }
+    }
 </script>
 
 </body>
