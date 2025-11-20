@@ -15,7 +15,7 @@
         align-items: center;
     }
     .term { font-weight: bold; }
-    .search-container { position: relative; margin-bottom: 30px; }
+    .input-container { position: relative; margin-bottom: 10px; }
     .dropdown {
         position: absolute;
         top: 100%;
@@ -24,7 +24,7 @@
         background: white;
         border: 1px solid #ddd;
         border-top: none;
-        max-height: 250px;
+        max-height: 200px;
         overflow-y: auto;
         display: none;
         z-index: 1000;
@@ -40,23 +40,16 @@
     }
     .dropdown-item .match-term { font-weight: bold; color: #1a73e8; }
     .dropdown-item .match-translation { color: #666; margin-left: 8px; }
-    .no-results {
-        padding: 10px 12px;
-        color: #999;
-        font-style: italic;
-    }
 </style>
 </head>
 <body>
 
-<h2>Search Vocabulary</h2>
-<div class="search-container">
-    <input id="searchInput" type="text" placeholder="Type to search terms or translations...">
+<h2>Add Vocabulary</h2>
+
+<div class="input-container">
+    <input id="termInput" type="text" placeholder="Term">
     <div id="dropdown" class="dropdown"></div>
 </div>
-
-<h2>Add Vocabulary</h2>
-<input id="termInput" type="text" placeholder="Term">
 <input id="translationInput" type="text" placeholder="Translation">
 <button onclick="addItem()">Add</button>
 
@@ -127,8 +120,8 @@
         });
     }
 
-    function handleSearch() {
-        const searchTerm = document.getElementById("searchInput").value.trim().toLowerCase();
+    function handleTermInput() {
+        const searchTerm = document.getElementById("termInput").value.trim().toLowerCase();
         const dropdown = document.getElementById("dropdown");
         
         if (!searchTerm) {
@@ -144,8 +137,7 @@
         dropdown.innerHTML = "";
 
         if (matches.length === 0) {
-            dropdown.innerHTML = '<div class="no-results">No matches found</div>';
-            dropdown.style.display = "block";
+            dropdown.style.display = "none";
             return;
         }
 
@@ -155,8 +147,10 @@
             div.innerHTML = `<span class="match-term">${escapeHtml(match.term)}</span><span class="match-translation">— ${escapeHtml(match.translation)}</span>`;
             div.onmousedown = (e) => {
                 e.preventDefault();
-                document.getElementById("searchInput").value = match.term;
+                document.getElementById("termInput").value = match.term;
+                document.getElementById("translationInput").value = match.translation;
                 dropdown.style.display = "none";
+                document.getElementById("translationInput").focus();
             };
             dropdown.appendChild(div);
         });
@@ -176,10 +170,10 @@
         return div.innerHTML;
     }
 
-    // Set up search input listeners
-    document.getElementById("searchInput").addEventListener("input", handleSearch);
-    document.getElementById("searchInput").addEventListener("focus", handleSearch);
-    document.getElementById("searchInput").addEventListener("blur", hideDropdown);
+    // Set up term input listeners
+    document.getElementById("termInput").addEventListener("input", handleTermInput);
+    document.getElementById("termInput").addEventListener("focus", handleTermInput);
+    document.getElementById("termInput").addEventListener("blur", hideDropdown);
 
     // Load entries on start
     loadEntries();
