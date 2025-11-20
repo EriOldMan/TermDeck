@@ -6,8 +6,14 @@
 <style>
     body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
     input { padding: 6px; width: 100%; margin-bottom: 10px; }
-    button { padding: 8px 12px; cursor: pointer; }
-    .item { padding: 6px 0; border-bottom: 1px solid #ddd; }
+    button { padding: 6px 10px; cursor: pointer; }
+    .item {
+        padding: 6px 0;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
     .term { font-weight: bold; }
 </style>
 </head>
@@ -25,7 +31,7 @@
 <script>
     let entries = [];
 
-    // Load saved data
+    // Load saved entries
     const saved = localStorage.getItem("vocab");
     if (saved) {
         entries = JSON.parse(saved);
@@ -33,32 +39,42 @@
     }
 
     function addItem() {
-        const term = document.getElementById('termInput').value.trim();
-        const translation = document.getElementById('translationInput').value.trim();
-
+        const term = document.getElementById("termInput").value.trim();
+        const translation = document.getElementById("translationInput").value.trim();
         if (!term || !translation) return;
 
         entries.push({ term, translation });
         entries.sort((a, b) => a.term.localeCompare(b.term));
+        save();
 
-        // Save
-        localStorage.setItem("vocab", JSON.stringify(entries));
-
-        document.getElementById('termInput').value = "";
-        document.getElementById('translationInput').value = "";
-
+        document.getElementById("termInput").value = "";
+        document.getElementById("translationInput").value = "";
         renderList();
     }
 
+    function deleteItem(index) {
+        entries.splice(index, 1);
+        save();
+        renderList();
+    }
+
+    function save() {
+        localStorage.setItem("vocab", JSON.stringify(entries));
+    }
+
     function renderList() {
-        const list = document.getElementById('list');
+        const list = document.getElementById("list");
         list.innerHTML = "";
-        for (const e of entries) {
-            const div = document.createElement('div');
+
+        entries.forEach((e, i) => {
+            const div = document.createElement("div");
             div.className = "item";
-            div.innerHTML = `<span class="term">${e.term}</span>: ${e.translation}`;
+            div.innerHTML = `
+                <span><span class="term">${e.term}</span>: ${e.translation}</span>
+                <button onclick="deleteItem(${i})">Delete</button>
+            `;
             list.appendChild(div);
-        }
+        });
     }
 </script>
 
