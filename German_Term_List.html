@@ -171,11 +171,27 @@
         font-size: 13px;
         background: #ff4757;
         box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+        margin-left: 6px;
     }
     
     .item button:hover {
         background: #ff3838;
         box-shadow: 0 4px 12px rgba(255, 71, 87, 0.5);
+    }
+    
+    .item button.edit-btn {
+        background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+        box-shadow: 0 2px 8px rgba(77, 171, 247, 0.3);
+    }
+    
+    .item button.edit-btn:hover {
+        background: linear-gradient(135deg, #339af0 0%, #228be6 100%);
+        box-shadow: 0 4px 12px rgba(77, 171, 247, 0.5);
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 6px;
     }
     
     .input-container { 
@@ -557,6 +573,7 @@
     let entries = [];
     let currentFilter = 'all';
     let selectedColor = 'blue';
+    let editingIndex = null;
 
     // Load saved entries
     function loadEntries() {
@@ -578,22 +595,66 @@
         
         if (!term || !translation) return;
 
-        entries.push({ term, translation, tag: tag || null, color: selectedColor });
-        entries.sort((a, b) => a.term.localeCompare(b.term));
+        if (editingIndex !== null) {
+            // Update existing entry
+            entries[editingIndex] = { term, translation, tag: tag || null, color: selectedColor };
+            entries.sort((a, b) => a.term.localeCompare(b.term));
+            editingIndex = null;
+            document.querySelector('button[onclick="addItem()"]').textContent = "➕";
+        } else {
+            // Add new entry
+            entries.push({ term, translation, tag: tag || null, color: selectedColor });
+            entries.sort((a, b) => a.term.localeCompare(b.term));
+        }
+        
         saveEntries();
 
         document.getElementById("termInput").value = "";
         document.getElementById("translationInput").value = "";
         document.getElementById("tagInput").value = "";
+        selectColor('blue');
         renderList();
         renderFilters();
     }
 
     async function deleteItem(index) {
+        // If we're editing this item, cancel the edit
+        if (editingIndex === index) {
+            cancelEdit();
+        }
+        
         entries.splice(index, 1);
         saveEntries();
         renderList();
         renderFilters();
+    }
+    
+    function editItem(index) {
+        editingIndex = index;
+        const entry = entries[index];
+        
+        document.getElementById("termInput").value = entry.term;
+        document.getElementById("translationInput").value = entry.translation;
+        document.getElementById("tagInput").value = entry.tag || "";
+        selectColor(entry.color);
+        
+        // Change button text to indicate editing mode
+        document.querySelector('button[onclick="addItem()"]').textContent = "💾 Update";
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Focus on term input
+        document.getElementById("termInput").focus();
+    }
+    
+    function cancelEdit() {
+        editingIndex = null;
+        document.getElementById("termInput").value = "";
+        document.getElementById("translationInput").value = "";
+        document.getElementById("tagInput").value = "";
+        selectColor('blue');
+        document.querySelector('button[onclick="addItem()"]').textContent = "➕";
     }
 
     function saveEntries() {
@@ -614,7 +675,7 @@
             : entries.filter(e => e.tag === currentFilter);
 
         if (filteredEntries.length === 0) {
-            list.innerHTML = "<div class='empty-state'>📝 No vocabulary entries found.</div>";
+            list.innerHTML = "<div class='empty-state'>🔍 No vocabulary entries found.</div>";
             return;
         }
 
@@ -633,7 +694,10 @@
                     <span class="term">${escapeHtml(e.term)}</span> : ${escapeHtml(e.translation)}
                     ${tagHtml}
                 </span>
-                <button onclick="deleteItem(${originalIndex})">🗑️</button>
+                <div class="button-group">
+                    <button class="edit-btn" onclick="editItem(${originalIndex})">✏️</button>
+                    <button onclick="deleteItem(${originalIndex})">🗑️</button>
+                </div>
             `;
             list.appendChild(div);
         });
