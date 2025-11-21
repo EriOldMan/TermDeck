@@ -267,11 +267,71 @@
         gap: 8px;
         margin-bottom: 12px;
         align-items: center;
+        position: relative;
     }
     
     .tag-input-container input {
         margin-bottom: 0;
         flex: 1;
+    }
+    
+    .tag-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #667eea;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        max-height: 150px;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        margin-top: -10px;
+    }
+    
+    body.night-mode .tag-dropdown {
+        background: #1a1a2e;
+        border-color: #8b9eff;
+        box-shadow: 0 8px 24px rgba(139, 158, 255, 0.3);
+    }
+    
+    .tag-dropdown-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    body.night-mode .tag-dropdown-item {
+        border-bottom: 1px solid #3a3a4e;
+    }
+    
+    .tag-dropdown-item:last-child {
+        border-bottom: none;
+    }
+    
+    .tag-dropdown-item:hover {
+        background: linear-gradient(90deg, #e8f0fe 0%, #f0e7ff 100%);
+        padding-left: 16px;
+    }
+    
+    body.night-mode .tag-dropdown-item:hover {
+        background: linear-gradient(90deg, #2a2a4e 0%, #3a3a5e 100%);
+        padding-left: 16px;
+    }
+    
+    .tag-dropdown-item .mini-tag {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        flex-shrink: 0;
     }
     
     .color-picker {
@@ -396,7 +456,8 @@
     </div>
     <input id="translationInput" type="text" placeholder="Translation" onkeypress="handleKeyPress(event)">
     <div class="tag-input-container">
-        <input id="tagInput" type="text" placeholder="Tag label (optional, e.g., Verbs, Food)">
+        <input id="tagInput" type="text" placeholder="Tag label (optional, e.g., Verbs, Food)" oninput="handleTagSearch()" onfocus="handleTagSearch()" onblur="hideTagDropdown()">
+        <div id="tagDropdown" class="tag-dropdown"></div>
     </div>
     <div class="color-picker">
         <div class="color-option blue selected" data-color="blue" onclick="selectColor('blue')"></div>
@@ -550,6 +611,64 @@
             option.classList.remove('selected');
         });
         document.querySelector(`.color-option[data-color="${color}"]`).classList.add('selected');
+    }
+    
+    function handleTagSearch() {
+        const searchTerm = document.getElementById("tagInput").value.trim().toLowerCase();
+        const dropdown = document.getElementById("tagDropdown");
+        
+        if (!searchTerm) {
+            dropdown.style.display = "none";
+            return;
+        }
+        
+        // Get unique tags with their colors
+        const uniqueTags = new Map();
+        entries.forEach(e => {
+            if (e.tag && !uniqueTags.has(e.tag)) {
+                uniqueTags.set(e.tag, e.color);
+            }
+        });
+        
+        // Filter tags that match search
+        const matches = Array.from(uniqueTags.entries()).filter(([tag]) => 
+            tag.toLowerCase().includes(searchTerm)
+        );
+        
+        if (matches.length === 0) {
+            dropdown.style.display = "none";
+            return;
+        }
+        
+        dropdown.innerHTML = "";
+        matches.forEach(([tag, color]) => {
+            const div = document.createElement("div");
+            div.className = "tag-dropdown-item";
+            
+            // Create mini color indicator
+            const miniTag = document.createElement("span");
+            miniTag.className = `mini-tag ${color}`;
+            miniTag.style.background = getComputedStyle(document.querySelector(`.color-option.${color}`)).background;
+            
+            div.appendChild(miniTag);
+            div.appendChild(document.createTextNode(tag));
+            
+            div.onmousedown = (e) => {
+                e.preventDefault();
+                document.getElementById("tagInput").value = tag;
+                selectColor(color);
+                dropdown.style.display = "none";
+            };
+            dropdown.appendChild(div);
+        });
+        
+        dropdown.style.display = "block";
+    }
+    
+    function hideTagDropdown() {
+        setTimeout(() => {
+            document.getElementById("tagDropdown").style.display = "none";
+        }, 200);
     }
 
     function handleTermInput() {
