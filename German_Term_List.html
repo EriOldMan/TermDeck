@@ -779,9 +779,9 @@
                     return;
                 }
                 
-                // Remove duplicates: check for identical term + translation
-                const existingSet = new Set(
-                    entries.map(e => `${e.term.toLowerCase()}|${e.translation.toLowerCase()}`)
+                // Remove duplicates: check only for identical terms (case-insensitive)
+                const existingTerms = new Set(
+                    entries.map(e => e.term.toLowerCase())
                 );
                 
                 let addedCount = 0;
@@ -789,16 +789,16 @@
                 
                 importedData.forEach(item => {
                     if (item.term && item.translation) {
-                        const key = `${item.term.toLowerCase()}|${item.translation.toLowerCase()}`;
+                        const termKey = item.term.toLowerCase();
                         
-                        if (!existingSet.has(key)) {
+                        if (!existingTerms.has(termKey)) {
                             entries.push({
                                 term: item.term,
                                 translation: item.translation,
                                 tag: item.tag || null,
                                 color: item.color || 'blue'
                             });
-                            existingSet.add(key);
+                            existingTerms.add(termKey);
                             addedCount++;
                         } else {
                             duplicateCount++;
