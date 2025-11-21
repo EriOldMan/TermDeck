@@ -334,6 +334,74 @@
         flex-shrink: 0;
     }
     
+    .export-import-container {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    body.night-mode .export-import-container {
+        border-top-color: #3a3a4e;
+    }
+    
+    .export-import-container button {
+        flex: 1;
+        padding: 10px 16px;
+        font-size: 14px;
+        background: linear-gradient(135deg, #20c997 0%, #12b886 100%);
+        box-shadow: 0 4px 12px rgba(32, 201, 151, 0.4);
+    }
+    
+    .export-import-container button:hover {
+        box-shadow: 0 6px 20px rgba(32, 201, 151, 0.6);
+    }
+    
+    .export-import-container button.import-btn {
+        background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+        box-shadow: 0 4px 12px rgba(77, 171, 247, 0.4);
+    }
+    
+    .export-import-container button.import-btn:hover {
+        box-shadow: 0 6px 20px rgba(77, 171, 247, 0.6);
+    }
+    
+    #importFile {
+        display: none;
+    }
+    
+    .import-status {
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        text-align: center;
+        display: none;
+    }
+    
+    .import-status.success {
+        background: #d3f9d8;
+        color: #2b8a3e;
+        display: block;
+    }
+    
+    body.night-mode .import-status.success {
+        background: #2b8a3e;
+        color: #d3f9d8;
+    }
+    
+    .import-status.error {
+        background: #ffe3e3;
+        color: #c92a2a;
+        display: block;
+    }
+    
+    body.night-mode .import-status.error {
+        background: #c92a2a;
+        color: #ffe3e3;
+    }
+    
     .color-picker {
         display: flex;
         gap: 6px;
@@ -476,6 +544,12 @@
 <div class="card">
     <div id="filterContainer" class="filter-container"></div>
     <div id="list"></div>
+    <div class="export-import-container">
+        <button onclick="exportVocabulary()">📤 Export</button>
+        <button class="import-btn" onclick="document.getElementById('importFile').click()">📥 Import</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" onchange="importVocabulary(event)">
+    <div id="importStatus" class="import-status"></div>
 </div>
 
 <script>
@@ -669,6 +743,95 @@
         setTimeout(() => {
             document.getElementById("tagDropdown").style.display = "none";
         }, 200);
+    }
+    
+    function exportVocabulary() {
+        if (entries.length === 0) {
+            showImportStatus('No vocabulary entries to export!', 'error');
+            return;
+        }
+        
+        const dataStr = JSON.stringify(entries, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `vocabulary_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showImportStatus(`✓ Exported ${entries.length} entries successfully!`, 'success');
+    }
+    
+    function importVocabulary(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                if (!Array.isArray(importedData)) {
+                    showImportStatus('Invalid file format. Expected JSON array.', 'error');
+                    return;
+                }
+                
+                // Remove duplicates: check for identical term + translation
+                const existingSet = new Set(
+                    entries.map(e => `${e.term.toLowerCase()}|${e.translation.toLowerCase()}`)
+                );
+                
+                let addedCount = 0;
+                let duplicateCount = 0;
+                
+                importedData.forEach(item => {
+                    if (item.term && item.translation) {
+                        const key = `${item.term.toLowerCase()}|${item.translation.toLowerCase()}`;
+                        
+                        if (!existingSet.has(key)) {
+                            entries.push({
+                                term: item.term,
+                                translation: item.translation,
+                                tag: item.tag || null,
+                                color: item.color || 'blue'
+                            });
+                            existingSet.add(key);
+                            addedCount++;
+                        } else {
+                            duplicateCount++;
+                        }
+                    }
+                });
+                
+                entries.sort((a, b) => a.term.localeCompare(b.term));
+                saveEntries();
+                renderList();
+                renderFilters();
+                
+                showImportStatus(
+                    `✓ Imported ${addedCount} new entries. ${duplicateCount > 0 ? `Skipped ${duplicateCount} duplicates.` : ''}`,
+                    'success'
+                );
+            } catch (error) {
+                showImportStatus('Error reading file. Please ensure it\'s a valid JSON file.', 'error');
+            }
+        };
+        
+        reader.readAsText(file);
+        event.target.value = ''; // Reset input
+    }
+    
+    function showImportStatus(message, type) {
+        const statusDiv = document.getElementById('importStatus');
+        statusDiv.textContent = message;
+        statusDiv.className = `import-status ${type}`;
+        
+        setTimeout(() => {
+            statusDiv.className = 'import-status';
+        }, 5000);
     }
 
     function handleTermInput() {
