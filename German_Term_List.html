@@ -262,6 +262,112 @@
         color: #666;
     }
     
+    .tag-input-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        align-items: center;
+    }
+    
+    .tag-input-container input {
+        margin-bottom: 0;
+        flex: 1;
+    }
+    
+    .color-picker {
+        display: flex;
+        gap: 6px;
+        padding: 8px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 10px;
+        flex-wrap: wrap;
+    }
+    
+    body.night-mode .color-picker {
+        background: rgba(255,255,255,0.05);
+    }
+    
+    .color-option {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 3px solid transparent;
+        transition: all 0.3s;
+        position: relative;
+    }
+    
+    .color-option:hover {
+        transform: scale(1.15);
+    }
+    
+    .color-option.selected {
+        border-color: white;
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.2);
+        transform: scale(1.2);
+    }
+    
+    body.night-mode .color-option.selected {
+        box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+    }
+    
+    .color-option.red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+    .color-option.blue { background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); }
+    .color-option.green { background: linear-gradient(135deg, #51cf66 0%, #40c057 100%); }
+    .color-option.yellow { background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%); }
+    .color-option.purple { background: linear-gradient(135deg, #b197fc 0%, #9775fa 100%); }
+    .color-option.orange { background: linear-gradient(135deg, #ff922b 0%, #fd7e14 100%); }
+    .color-option.pink { background: linear-gradient(135deg, #f06595 0%, #e64980 100%); }
+    .color-option.teal { background: linear-gradient(135deg, #20c997 0%, #12b886 100%); }
+    
+    .tag {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 8px;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    .tag.red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+    .tag.blue { background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); }
+    .tag.green { background: linear-gradient(135deg, #51cf66 0%, #40c057 100%); }
+    .tag.yellow { background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%); }
+    .tag.purple { background: linear-gradient(135deg, #b197fc 0%, #9775fa 100%); }
+    .tag.orange { background: linear-gradient(135deg, #ff922b 0%, #fd7e14 100%); }
+    .tag.pink { background: linear-gradient(135deg, #f06595 0%, #e64980 100%); }
+    .tag.teal { background: linear-gradient(135deg, #20c997 0%, #12b886 100%); }
+    
+    .filter-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-tag {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+        color: white;
+    }
+    
+    .filter-tag.active {
+        border-color: white;
+        box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+        transform: scale(1.05);
+    }
+    
+    .filter-tag.all {
+        background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+    }
+    
     /* Scrollbar styling */
     .dropdown::-webkit-scrollbar {
         width: 8px;
@@ -289,16 +395,32 @@
         <div id="dropdown" class="dropdown"></div>
     </div>
     <input id="translationInput" type="text" placeholder="Translation" onkeypress="handleKeyPress(event)">
+    <div class="tag-input-container">
+        <input id="tagInput" type="text" placeholder="Tag label (optional, e.g., Verbs, Food)">
+    </div>
+    <div class="color-picker">
+        <div class="color-option blue selected" data-color="blue" onclick="selectColor('blue')"></div>
+        <div class="color-option red" data-color="red" onclick="selectColor('red')"></div>
+        <div class="color-option green" data-color="green" onclick="selectColor('green')"></div>
+        <div class="color-option yellow" data-color="yellow" onclick="selectColor('yellow')"></div>
+        <div class="color-option purple" data-color="purple" onclick="selectColor('purple')"></div>
+        <div class="color-option orange" data-color="orange" onclick="selectColor('orange')"></div>
+        <div class="color-option pink" data-color="pink" onclick="selectColor('pink')"></div>
+        <div class="color-option teal" data-color="teal" onclick="selectColor('teal')"></div>
+    </div>
     <button onclick="addItem()">➕ Add</button>
 </div>
 
 <h2>📚 Your Vocabulary</h2>
 <div class="card">
+    <div id="filterContainer" class="filter-container"></div>
     <div id="list"></div>
 </div>
 
 <script>
     let entries = [];
+    let currentFilter = 'all';
+    let selectedColor = 'blue';
 
     // Load saved entries
     function loadEntries() {
@@ -316,21 +438,26 @@
     async function addItem() {
         const term = document.getElementById("termInput").value.trim();
         const translation = document.getElementById("translationInput").value.trim();
+        const tag = document.getElementById("tagInput").value.trim();
+        
         if (!term || !translation) return;
 
-        entries.push({ term, translation });
+        entries.push({ term, translation, tag: tag || null, color: selectedColor });
         entries.sort((a, b) => a.term.localeCompare(b.term));
         saveEntries();
 
         document.getElementById("termInput").value = "";
         document.getElementById("translationInput").value = "";
+        document.getElementById("tagInput").value = "";
         renderList();
+        renderFilters();
     }
 
     async function deleteItem(index) {
         entries.splice(index, 1);
         saveEntries();
         renderList();
+        renderFilters();
     }
 
     function saveEntries() {
@@ -346,21 +473,83 @@
         const list = document.getElementById("list");
         list.innerHTML = "";
 
-        if (entries.length === 0) {
-            list.innerHTML = "<div class='empty-state'>📝 No vocabulary entries yet. Add some above!</div>";
+        const filteredEntries = currentFilter === 'all' 
+            ? entries 
+            : entries.filter(e => e.tag === currentFilter);
+
+        if (filteredEntries.length === 0) {
+            list.innerHTML = "<div class='empty-state'>📝 No vocabulary entries found.</div>";
             return;
         }
 
-        entries.forEach((e, i) => {
+        filteredEntries.forEach((e) => {
+            const originalIndex = entries.indexOf(e);
             const div = document.createElement("div");
             div.className = "item";
-            div.id = `item-${i}`;
+            div.id = `item-${originalIndex}`;
+            
+            const tagHtml = e.tag 
+                ? `<span class="tag ${e.color}">${escapeHtml(e.tag)}</span>` 
+                : '';
+            
             div.innerHTML = `
-                <span><span class="term">${escapeHtml(e.term)}</span> : ${escapeHtml(e.translation)}</span>
-                <button onclick="deleteItem(${i})">🗑️ Delete</button>
+                <span>
+                    <span class="term">${escapeHtml(e.term)}</span> : ${escapeHtml(e.translation)}
+                    ${tagHtml}
+                </span>
+                <button onclick="deleteItem(${originalIndex})">🗑️ Delete</button>
             `;
             list.appendChild(div);
         });
+    }
+    
+    function renderFilters() {
+        const filterContainer = document.getElementById("filterContainer");
+        const uniqueTags = [...new Set(entries.filter(e => e.tag).map(e => ({ tag: e.tag, color: e.color })))];
+        
+        if (uniqueTags.length === 0) {
+            filterContainer.innerHTML = "";
+            return;
+        }
+        
+        filterContainer.innerHTML = `
+            <div class="filter-tag all ${currentFilter === 'all' ? 'active' : ''}" onclick="filterByTag('all')">
+                All (${entries.length})
+            </div>
+        `;
+        
+        // Group by unique tag names
+        const tagMap = new Map();
+        entries.forEach(e => {
+            if (e.tag && !tagMap.has(e.tag)) {
+                tagMap.set(e.tag, e.color);
+            }
+        });
+        
+        tagMap.forEach((color, tag) => {
+            const count = entries.filter(e => e.tag === tag).length;
+            const filterDiv = document.createElement("div");
+            filterDiv.className = `filter-tag ${color} ${currentFilter === tag ? 'active' : ''}`;
+            filterDiv.textContent = `${tag} (${count})`;
+            filterDiv.onclick = () => filterByTag(tag);
+            filterContainer.appendChild(filterDiv);
+        });
+    }
+    
+    function filterByTag(tag) {
+        currentFilter = tag;
+        renderList();
+        renderFilters();
+    }
+    
+    function selectColor(color) {
+        selectedColor = color;
+        
+        // Update UI
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        document.querySelector(`.color-option[data-color="${color}"]`).classList.add('selected');
     }
 
     function handleTermInput() {
@@ -392,6 +581,10 @@
                 e.preventDefault();
                 document.getElementById("termInput").value = match.term;
                 document.getElementById("translationInput").value = match.translation;
+                if (match.tag) {
+                    document.getElementById("tagInput").value = match.tag;
+                    selectColor(match.color);
+                }
                 dropdown.style.display = "none";
                 document.getElementById("translationInput").focus();
                 
@@ -455,6 +648,7 @@
     // Load entries on start
     loadEntries();
     loadTheme();
+    renderFilters();
     
     function toggleTheme() {
         const body = document.body;
