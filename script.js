@@ -610,7 +610,13 @@
     
     let pendingCollisions = [];
     let currentCollisionIndex = -1;
-    let importStats = { added: 0, skipped: 0, overwritten: 0, both: 0 };
+    let importStats = { 
+        new: 0, 
+        conflict_added: 0, 
+        updated: 0, 
+        exact_dupe: 0, 
+        user_skipped: 0 
+    };
 
     function importVocabulary(event) {
         const file = event.target.files[0];
@@ -627,7 +633,13 @@
                 }
                 
                 pendingCollisions = [];
-                importStats = { added: 0, skipped: 0, overwritten: 0, both: 0 };
+                importStats = { 
+                    new: 0, 
+                    conflict_added: 0, 
+                    updated: 0, 
+                    exact_dupe: 0, 
+                    user_skipped: 0 
+                };
                 
                 importedData.forEach(item => {
                     if (item.term && item.translation) {
@@ -663,7 +675,7 @@
 
                             if (sameTerm && sameTrans && isTagSubset) {
                                 // Exact duplicate. Keep existing (skip).
-                                importStats.skipped++;
+                                importStats.exact_dupe++;
                             } else {
                                 // Collision
                                 pendingCollisions.push({ newItem, existingIndex });
@@ -671,7 +683,7 @@
                         } else {
                             // New item
                             entries.push(newItem);
-                            importStats.added++;
+                            importStats.new++;
                         }
                     }
                 });
@@ -746,7 +758,7 @@
         if (action === 'overwrite') {
             // Replace existing
             entries[collision.existingIndex] = collision.newItem;
-            importStats.overwritten++;
+            importStats.updated++;
         } else if (action === 'keepBoth') {
             const existing = entries[collision.existingIndex];
             const newItem = collision.newItem;
@@ -762,18 +774,18 @@
                     }
                 });
                 if (mergedCount > 0) {
-                    importStats.overwritten++; // Count as update/overwrite since we modified existing
+                    importStats.updated++; // Count as update/overwrite since we modified existing
                 } else {
-                    importStats.skipped++; // No new tags were added
+                    importStats.exact_dupe++; // No new tags were added
                 }
             } else {
                 // Different translation but same term (or whatever triggered collision), keep both
                 entries.push(collision.newItem);
-                importStats.both++;
+                importStats.conflict_added++;
             }
         } else {
             // Skip (keep existing)
-            importStats.skipped++;
+            importStats.user_skipped++;
         }
 
         currentCollisionIndex++;
@@ -791,13 +803,24 @@
         renderList();
         renderFilters();
         
-        const parts = [];
-        if (importStats.added > 0) parts.push(`${importStats.added} added`);
-        if (importStats.overwritten > 0) parts.push(`${importStats.overwritten} updated`);
-        if (importStats.both > 0) parts.push(`${importStats.both} kept as duplicate`);
-        if (importStats.skipped > 0) parts.push(`${importStats.skipped} skipped`);
+        const totalAdded = importStats.new + importStats.conflict_added;
+        const totalIgnored = importStats.exact_dupe + importStats.user_skipped;
         
-        const msg = parts.length > 0 ? `Import complete: ${parts.join(', ')}` : "Import complete: No changes made.";
+        const parts = [];
+        
+        if (totalAdded > 0) {
+            parts.push(`Added: ${totalAdded} (New: ${importStats.new}, Conflict resolved: ${importStats.conflict_added})`);
+        }
+        
+        if (totalIgnored > 0) {
+            parts.push(`Ignored: ${totalIgnored} (Exact dupe: ${importStats.exact_dupe}, User skipped: ${importStats.user_skipped})`);
+        }
+        
+        if (importStats.updated > 0) {
+            parts.push(`Updated: ${importStats.updated}`);
+        }
+        
+        const msg = parts.length > 0 ? `Import Log:\n${parts.join('\n')}` : "Import complete: No changes made.";
         showImportStatus(msg, 'success');
     }
     
@@ -808,7 +831,7 @@
         
         setTimeout(() => {
             statusDiv.className = 'import-status';
-        }, 5000);
+        }, 10000);
     }
 
     function handleTermInput() {

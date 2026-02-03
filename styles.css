@@ -507,7 +507,8 @@ body.night-mode .export-import-container {
     padding: 12px;
     border-radius: 8px;
     font-size: 14px;
-    text-align: center;
+    text-align: left;
+    white-space: pre-wrap;
     display: none;
 }
 
