@@ -312,6 +312,116 @@
         box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
         margin-top: -10px;
     }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        backdrop-filter: blur(5px);
+    }
+    
+    .modal {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    body.night-mode .modal {
+        background: #2a2a3e;
+        color: #e0e0e0;
+    }
+    
+    @keyframes modalSlideIn {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 20px 0;
+    }
+    
+    .comparison-col h4 {
+        margin-bottom: 12px;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #667eea;
+    }
+    
+    .comparison-box {
+        background: #f8f9ff;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    body.night-mode .comparison-box {
+        background: #1a1a2e;
+        border-color: #3a3a4e;
+    }
+    
+    .comp-field {
+        margin-bottom: 8px;
+    }
+    
+    .comp-label {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 2px;
+    }
+    
+    .comp-value {
+        font-weight: 500;
+        word-break: break-word;
+        font-size: 14px;
+    }
+    
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+        box-shadow: none;
+    }
+    
+    .btn-secondary:hover {
+        background: #d0d0d0;
+    }
+    
+    body.night-mode .btn-secondary {
+        background: #3a3a4e;
+        color: #e0e0e0;
+    }
+    
+    .btn-danger {
+        background: #ff4757;
+        box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+    }
+    
+    .btn-danger:hover {
+        background: #ff3838;
+    }
     
     body.night-mode .tag-dropdown {
         background: #1a1a2e;
@@ -1093,6 +1203,10 @@
         showImportStatus(`✓ Exported ${entries.length} entries successfully!`, 'success');
     }
     
+    let pendingCollisions = [];
+    let currentCollisionIndex = -1;
+    let importStats = { added: 0, skipped: 0, overwritten: 0, both: 0 };
+
     function importVocabulary(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -1107,56 +1221,147 @@
                     return;
                 }
                 
-                // Remove duplicates: check only for identical terms (case-insensitive)
-                const existingTerms = new Set(
-                    entries.map(e => e.term.toLowerCase())
-                );
-                
-                let addedCount = 0;
-                let duplicateCount = 0;
+                pendingCollisions = [];
+                importStats = { added: 0, skipped: 0, overwritten: 0, both: 0 };
                 
                 importedData.forEach(item => {
                     if (item.term && item.translation) {
-                        const termKey = item.term.toLowerCase();
-                        
-                        if (!existingTerms.has(termKey)) {
-                            // Normalize tags
-                            let tags = [];
-                            if (item.tags) {
-                                tags = item.tags;
-                            } else if (item.tag) {
-                                tags = [{ text: item.tag, color: item.color || 'blue' }];
-                            }
+                        // Normalize tags
+                        let tags = [];
+                        if (item.tags) {
+                            tags = item.tags;
+                        } else if (item.tag) {
+                            tags = [{ text: item.tag, color: item.color || 'blue' }];
+                        }
 
-                            entries.push({
-                                term: item.term,
-                                translation: item.translation,
-                                tags: tags
-                            });
-                            existingTerms.add(termKey);
-                            addedCount++;
+                        const newItem = {
+                            term: item.term,
+                            translation: item.translation,
+                            tags: tags
+                        };
+                        
+                        // Check for existing term (case-insensitive)
+                        const existingIndex = entries.findIndex(e => e.term.toLowerCase() === newItem.term.toLowerCase());
+                        
+                        if (existingIndex !== -1) {
+                            const existing = entries[existingIndex];
+                            
+                            // Check for exact identity
+                            const sameTerm = existing.term === newItem.term;
+                            const sameTrans = existing.translation === newItem.translation;
+                            
+                            const existingTags = existing.tags ? existing.tags.map(t => t.text).sort().join('|') : '';
+                            const newTags = newItem.tags ? newItem.tags.map(t => t.text).sort().join('|') : '';
+                            const sameTags = existingTags === newTags;
+
+                            if (sameTerm && sameTrans && sameTags) {
+                                // Exact duplicate. Keep existing (skip).
+                                importStats.skipped++;
+                            } else {
+                                // Collision
+                                pendingCollisions.push({ newItem, existingIndex });
+                            }
                         } else {
-                            duplicateCount++;
+                            // New item
+                            entries.push(newItem);
+                            importStats.added++;
                         }
                     }
                 });
                 
-                entries.sort((a, b) => a.term.localeCompare(b.term));
-                saveEntries();
-                renderList();
-                renderFilters();
-                
-                showImportStatus(
-                    `✓ Imported ${addedCount} new entries. ${duplicateCount > 0 ? `Skipped ${duplicateCount} duplicates.` : ''}`,
-                    'success'
-                );
+                if (pendingCollisions.length > 0) {
+                    currentCollisionIndex = 0;
+                    showNextCollision();
+                } else {
+                    finishImport();
+                }
+
             } catch (error) {
+                console.error(error);
                 showImportStatus('Error reading file. Please ensure it\'s a valid JSON file.', 'error');
             }
         };
         
         reader.readAsText(file);
         event.target.value = ''; // Reset input
+    }
+    
+    function showNextCollision() {
+        const modal = document.getElementById('collisionModal');
+        const collision = pendingCollisions[currentCollisionIndex];
+        const existing = entries[collision.existingIndex];
+        const newItem = collision.newItem;
+
+        document.getElementById('collisionTerm').textContent = existing.term;
+        document.getElementById('existingEntryDetails').innerHTML = formatEntryDetails(existing);
+        document.getElementById('newEntryDetails').innerHTML = formatEntryDetails(newItem);
+        
+        document.getElementById('conflictCount').textContent = currentCollisionIndex + 1;
+        document.getElementById('conflictTotal').textContent = pendingCollisions.length;
+
+        modal.style.display = 'flex';
+    }
+
+    function formatEntryDetails(entry) {
+        const tagsHtml = entry.tags && entry.tags.length > 0 
+            ? entry.tags.map(t => `<span class="tag ${t.color}" style="font-size:12px;padding:2px 6px;">${escapeHtml(t.text)}</span>`).join(' ')
+            : '<span style="color:#999;font-style:italic">No tags</span>';
+            
+        return `
+            <div class="comp-field">
+                <div class="comp-label">Term</div>
+                <div class="comp-value">${escapeHtml(entry.term)}</div>
+            </div>
+            <div class="comp-field">
+                <div class="comp-label">Translation</div>
+                <div class="comp-value">${escapeHtml(entry.translation)}</div>
+            </div>
+            <div class="comp-field">
+                <div class="comp-label">Tags</div>
+                <div class="comp-value">${tagsHtml}</div>
+            </div>
+        `;
+    }
+
+    function resolveCollision(action) {
+        const collision = pendingCollisions[currentCollisionIndex];
+        
+        if (action === 'overwrite') {
+            // Replace existing
+            entries[collision.existingIndex] = collision.newItem;
+            importStats.overwritten++;
+        } else if (action === 'keepBoth') {
+            // Add as new
+            entries.push(collision.newItem);
+            importStats.both++;
+        } else {
+            // Skip (keep existing)
+            importStats.skipped++;
+        }
+
+        currentCollisionIndex++;
+        if (currentCollisionIndex < pendingCollisions.length) {
+            showNextCollision();
+        } else {
+            document.getElementById('collisionModal').style.display = 'none';
+            finishImport();
+        }
+    }
+
+    function finishImport() {
+        entries.sort((a, b) => a.term.localeCompare(b.term));
+        saveEntries();
+        renderList();
+        renderFilters();
+        
+        const parts = [];
+        if (importStats.added > 0) parts.push(`${importStats.added} added`);
+        if (importStats.overwritten > 0) parts.push(`${importStats.overwritten} updated`);
+        if (importStats.both > 0) parts.push(`${importStats.both} kept as duplicate`);
+        if (importStats.skipped > 0) parts.push(`${importStats.skipped} skipped`);
+        
+        const msg = parts.length > 0 ? `Import complete: ${parts.join(', ')}` : "Import complete: No changes made.";
+        showImportStatus(msg, 'success');
     }
     
     function showImportStatus(message, type) {
@@ -1483,6 +1688,39 @@
         }
     }
 </script>
+
+<div id="collisionModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Import Conflict Detected</h3>
+        <p style="margin-top: 8px; opacity: 0.8; font-size: 14px;">
+            An entry with the term "<span id="collisionTerm" style="font-weight:bold"></span>" already exists but has different details.
+        </p>
+        
+        <div class="comparison-grid">
+            <div class="comparison-col">
+                <h4>Existing Entry</h4>
+                <div class="comparison-box" id="existingEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+            <div class="comparison-col">
+                <h4>New Entry</h4>
+                <div class="comparison-box" id="newEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="resolveCollision('skip')">Keep Existing</button>
+            <button onclick="resolveCollision('keepBoth')">Keep Both</button>
+            <button class="btn-danger" onclick="resolveCollision('overwrite')">Overwrite</button>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 12px; opacity: 0.6;">
+            Conflict <span id="conflictCount">1</span> of <span id="conflictTotal">1</span>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
