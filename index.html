@@ -486,14 +486,14 @@
         text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     
-    .tag.red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
-    .tag.blue { background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); }
-    .tag.green { background: linear-gradient(135deg, #51cf66 0%, #40c057 100%); }
-    .tag.yellow { background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%); }
-    .tag.purple { background: linear-gradient(135deg, #b197fc 0%, #9775fa 100%); }
-    .tag.orange { background: linear-gradient(135deg, #ff922b 0%, #fd7e14 100%); }
-    .tag.pink { background: linear-gradient(135deg, #f06595 0%, #e64980 100%); }
-    .tag.teal { background: linear-gradient(135deg, #20c997 0%, #12b886 100%); }
+    .tag.red, .filter-tag.red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+    .tag.blue, .filter-tag.blue { background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); }
+    .tag.green, .filter-tag.green { background: linear-gradient(135deg, #51cf66 0%, #40c057 100%); }
+    .tag.yellow, .filter-tag.yellow { background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%); }
+    .tag.purple, .filter-tag.purple { background: linear-gradient(135deg, #b197fc 0%, #9775fa 100%); }
+    .tag.orange, .filter-tag.orange { background: linear-gradient(135deg, #ff922b 0%, #fd7e14 100%); }
+    .tag.pink, .filter-tag.pink { background: linear-gradient(135deg, #f06595 0%, #e64980 100%); }
+    .tag.teal, .filter-tag.teal { background: linear-gradient(135deg, #20c997 0%, #12b886 100%); }
     
     .filter-container {
         display: flex;
@@ -521,6 +521,18 @@
     
     .filter-tag.all {
         background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+    }
+    
+    /* Ensure active filter tag is visible in LIGHT mode even if no color class is present */
+    body:not(.night-mode) .filter-tag.active:not(.red):not(.blue):not(.green):not(.yellow):not(.purple):not(.orange):not(.pink):not(.teal):not(.all) {
+        background: #e8ecff;
+        color: #1f1f1f;
+        border-color: #1f2937;
+        box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.6);
+    }
+    body:not(.night-mode) .filter-tag.active {
+        border-color: #1f2937;
+        box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.6);
     }
     
     /* Scrollbar styling */
