@@ -654,3 +654,37 @@ body:not(.night-mode) .filter-tag.active {
     background: #667eea;
     border-radius: 10px;
 }
+
+.undo-btn {
+    margin-top: 12px;
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(250, 82, 82, 0.25);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.undo-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px rgba(250, 82, 82, 0.35);
+}
+
+.undo-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(250, 82, 82, 0.25);
+}
+
+.undo-btn::before {
+    content: "↺";
+    font-size: 18px;
+}

@@ -610,6 +610,8 @@
     
     let pendingCollisions = [];
     let currentCollisionIndex = -1;
+    let preImportBackup = null;
+    let importStatusTimeout = null;
     let importStats = { 
         new: 0, 
         conflict_added: 0, 
@@ -618,9 +620,26 @@
         user_skipped: 0 
     };
 
+    function undoLastImport() {
+        if (!preImportBackup) return;
+        
+        if (confirm('Are you sure you want to undo the last import? This will revert all changes.')) {
+            entries = JSON.parse(JSON.stringify(preImportBackup));
+            saveEntries();
+            renderList();
+            renderFilters();
+            
+            showImportStatus('Import undone. Database reverted to previous state.', 'success');
+            preImportBackup = null;
+        }
+    }
+
     function importVocabulary(event) {
         const file = event.target.files[0];
         if (!file) return;
+        
+        // Save state before import
+        preImportBackup = JSON.parse(JSON.stringify(entries));
         
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -821,17 +840,36 @@
         }
         
         const msg = parts.length > 0 ? `Import Log:\n${parts.join('\n')}` : "Import complete: No changes made.";
-        showImportStatus(msg, 'success');
+        showImportStatus(msg, 'success', true);
     }
     
-    function showImportStatus(message, type) {
+    function showImportStatus(message, type, showUndo = false) {
         const statusDiv = document.getElementById('importStatus');
+        
+        // Clear previous timeout
+        if (importStatusTimeout) {
+            clearTimeout(importStatusTimeout);
+            importStatusTimeout = null;
+        }
+
         statusDiv.textContent = message;
         statusDiv.className = `import-status ${type}`;
         
-        setTimeout(() => {
+        if (showUndo && preImportBackup) {
+            const undoBtn = document.createElement('button');
+            undoBtn.textContent = "Undo Import (Revert Changes)";
+            undoBtn.className = "undo-btn";
+            undoBtn.onclick = undoLastImport;
+            statusDiv.appendChild(undoBtn);
+        }
+        
+        // Longer duration if undo is available
+        const duration = showUndo ? 30000 : 5000;
+        
+        importStatusTimeout = setTimeout(() => {
             statusDiv.className = 'import-status';
-        }, 10000);
+            statusDiv.innerHTML = '';
+        }, duration);
     }
 
     function handleTermInput() {
