@@ -1179,25 +1179,14 @@
             div.innerHTML = `<span class="match-term">${escapeHtml(match.term)}</span><span class="match-translation">— ${escapeHtml(match.translation)}</span>`;
             div.onmousedown = (e) => {
                 e.preventDefault();
-                document.getElementById("termInput").value = match.term;
-                document.getElementById("translationInput").value = match.translation;
-                if (match.tags) {
-                    currentEntryTags = JSON.parse(JSON.stringify(match.tags));
-                    renderActiveTags();
-                } else {
-                    currentEntryTags = [];
-                    renderActiveTags();
-                }
-                dropdown.style.display = "none";
-                document.getElementById("translationInput").focus();
-                
-                // Find and highlight the item in the list
                 const itemIndex = entries.findIndex(entry => 
                     entry.term === match.term && entry.translation === match.translation
                 );
                 if (itemIndex !== -1) {
-                    highlightItem(itemIndex);
+                    editItem(itemIndex);
+                    document.getElementById("translationInput").focus();
                 }
+                dropdown.style.display = "none";
             };
             dropdown.appendChild(div);
         });
@@ -1241,23 +1230,14 @@
             div.innerHTML = `<span class="match-term">${escapeHtml(match.translation)}</span><span class="match-translation">— ${escapeHtml(match.term)}</span>`;
             div.onmousedown = (e) => {
                 e.preventDefault();
-                document.getElementById("termInput").value = match.term;
-                document.getElementById("translationInput").value = match.translation;
-                if (match.tags) {
-                    currentEntryTags = JSON.parse(JSON.stringify(match.tags));
-                    renderActiveTags();
-                } else {
-                    currentEntryTags = [];
-                    renderActiveTags();
-                }
-                dropdown.style.display = "none";
-                document.getElementById("tagInput").focus();
                 const itemIndex = entries.findIndex(entry =>
                     entry.term === match.term && entry.translation === match.translation
                 );
                 if (itemIndex !== -1) {
-                    highlightItem(itemIndex);
+                    editItem(itemIndex);
+                    document.getElementById("tagInput").focus();
                 }
+                dropdown.style.display = "none";
             };
             dropdown.appendChild(div);
         });
@@ -1343,20 +1323,14 @@
             if (dropdown.style.display === "block" && termMatches.length > 0 && termDropdownIndex >= 0) {
                 e.preventDefault();
                 const match = termMatches[termDropdownIndex];
-                document.getElementById("termInput").value = match.term;
-                document.getElementById("translationInput").value = match.translation;
-                if (match.tag) {
-                    document.getElementById("tagInput").value = match.tag;
-                    selectColor(match.color);
-                }
-                dropdown.style.display = "none";
-                document.getElementById("translationInput").focus();
                 const itemIndex = entries.findIndex(entry => 
                     entry.term === match.term && entry.translation === match.translation
                 );
                 if (itemIndex !== -1) {
-                    highlightItem(itemIndex);
+                    editItem(itemIndex);
+                    document.getElementById("translationInput").focus();
                 }
+                dropdown.style.display = "none";
             }
         } else if (e.key === "Tab") {
             e.preventDefault();
@@ -1390,20 +1364,14 @@
             if (dropdown.style.display === "block" && translationMatches.length > 0 && translationDropdownIndex >= 0) {
                 e.preventDefault();
                 const match = translationMatches[translationDropdownIndex];
-                document.getElementById("termInput").value = match.term;
-                document.getElementById("translationInput").value = match.translation;
-                if (match.tag) {
-                    document.getElementById("tagInput").value = match.tag;
-                    selectColor(match.color);
-                }
-                dropdown.style.display = "none";
-                document.getElementById("tagInput").focus();
                 const itemIndex = entries.findIndex(entry =>
                     entry.term === match.term && entry.translation === match.translation
                 );
                 if (itemIndex !== -1) {
-                    highlightItem(itemIndex);
+                    editItem(itemIndex);
+                    document.getElementById("tagInput").focus();
                 }
+                dropdown.style.display = "none";
             }
         } else if (e.key === "Tab") {
             e.preventDefault();
@@ -1435,16 +1403,15 @@
                 e.preventDefault();
                 const item = items[tagDropdownIndex];
                 const tag = item.textContent.trim();
-                const color = getComputedStyle(item.querySelector(".mini-tag")).background;
-                document.getElementById("tagInput").value = tag;
+                const miniTag = item.querySelector(".mini-tag");
+                // Extract color from class list (assumes "mini-tag {color}")
+                let color = 'blue';
+                if (miniTag.classList.length > 1) {
+                    color = miniTag.classList[1];
+                }
+                
+                addTag(tag, color);
                 dropdown.style.display = "none";
-                const options = document.querySelectorAll(".color-option");
-                options.forEach(o => {
-                    const optColor = getComputedStyle(o).background;
-                    if (optColor === color) {
-                        selectColor(o.getAttribute("data-color"));
-                    }
-                });
                 document.querySelector('button[onclick="addItem()"]').focus();
             }
         } else if (e.key === "Tab") {
