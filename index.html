@@ -549,7 +549,10 @@
         <input id="termInput" type="text" placeholder="Term" onkeypress="handleKeyPress(event)">
         <div id="dropdown" class="dropdown"></div>
     </div>
-    <input id="translationInput" type="text" placeholder="Translation" onkeypress="handleKeyPress(event)">
+    <div class="input-container">
+        <input id="translationInput" type="text" placeholder="Translation" onkeypress="handleKeyPress(event)">
+        <div id="translationDropdown" class="dropdown"></div>
+    </div>
     <div class="tag-input-container">
         <input id="tagInput" type="text" placeholder="Tag label (optional, e.g., Verbs, Food)" oninput="handleTagSearch()" onfocus="handleTagSearch()" onblur="hideTagDropdown()" onkeypress="handleKeyPress(event)">
         <div id="tagDropdown" class="tag-dropdown"></div>
@@ -588,6 +591,8 @@
     let termDropdownIndex = -1;
     let tagMatches = [];
     let tagDropdownIndex = -1;
+    let translationMatches = [];
+    let translationDropdownIndex = -1;
 
     // Load saved entries
     function loadEntries() {
@@ -1057,6 +1062,61 @@
         }, 200);
     }
 
+    function handleTranslationInput() {
+        const searchTerm = document.getElementById("translationInput").value.trim().toLowerCase();
+        const dropdown = document.getElementById("translationDropdown");
+        if (!searchTerm) {
+            dropdown.style.display = "none";
+            translationMatches = [];
+            translationDropdownIndex = -1;
+            return;
+        }
+        const matches = entries.filter(e =>
+            e.translation.toLowerCase().includes(searchTerm) ||
+            e.term.toLowerCase().includes(searchTerm)
+        );
+        dropdown.innerHTML = "";
+        if (matches.length === 0) {
+            dropdown.style.display = "none";
+            translationMatches = [];
+            translationDropdownIndex = -1;
+            return;
+        }
+        translationMatches = matches;
+        translationDropdownIndex = -1;
+        matches.forEach(match => {
+            const div = document.createElement("div");
+            div.className = "dropdown-item";
+            div.innerHTML = `<span class="match-term">${escapeHtml(match.translation)}</span><span class="match-translation">— ${escapeHtml(match.term)}</span>`;
+            div.onmousedown = (e) => {
+                e.preventDefault();
+                document.getElementById("termInput").value = match.term;
+                document.getElementById("translationInput").value = match.translation;
+                if (match.tag) {
+                    document.getElementById("tagInput").value = match.tag;
+                    selectColor(match.color);
+                }
+                dropdown.style.display = "none";
+                document.getElementById("tagInput").focus();
+                const itemIndex = entries.findIndex(entry =>
+                    entry.term === match.term && entry.translation === match.translation
+                );
+                if (itemIndex !== -1) {
+                    highlightItem(itemIndex);
+                }
+            };
+            dropdown.appendChild(div);
+        });
+        dropdown.style.display = "block";
+    }
+    
+    function hideTranslationDropdown() {
+        setTimeout(() => {
+            document.getElementById("translationDropdown").style.display = "none";
+            translationMatches = [];
+            translationDropdownIndex = -1;
+        }, 200);
+    }
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -1067,8 +1127,9 @@
         if (event.key === "Enter") {
             event.preventDefault();
             const dropdown = document.getElementById("dropdown");
+            const translationDropdown = document.getElementById("translationDropdown");
             const tagDropdown = document.getElementById("tagDropdown");
-            if (dropdown.style.display === "block" || tagDropdown.style.display === "block") {
+            if (dropdown.style.display === "block" || translationDropdown.style.display === "block" || tagDropdown.style.display === "block") {
                 return;
             }
             addItem();
@@ -1140,6 +1201,53 @@
             termMatches = [];
             termDropdownIndex = -1;
             document.getElementById("translationInput").focus();
+        }
+    });
+    document.getElementById("translationInput").addEventListener("input", handleTranslationInput);
+    document.getElementById("translationInput").addEventListener("focus", handleTranslationInput);
+    document.getElementById("translationInput").addEventListener("blur", hideTranslationDropdown);
+    document.getElementById("translationInput").addEventListener("keydown", function(e) {
+        const dropdown = document.getElementById("translationDropdown");
+        const items = Array.from(dropdown.querySelectorAll(".dropdown-item"));
+        if (e.key === "ArrowDown") {
+            if (dropdown.style.display === "block" && translationMatches.length > 0) {
+                e.preventDefault();
+                translationDropdownIndex = Math.min(translationDropdownIndex + 1, translationMatches.length - 1);
+                items.forEach(i => i.classList.remove("active"));
+                if (translationDropdownIndex >= 0) items[translationDropdownIndex].classList.add("active");
+            }
+        } else if (e.key === "ArrowUp") {
+            if (dropdown.style.display === "block" && translationMatches.length > 0) {
+                e.preventDefault();
+                translationDropdownIndex = Math.max(translationDropdownIndex - 1, -1);
+                items.forEach(i => i.classList.remove("active"));
+                if (translationDropdownIndex >= 0) items[translationDropdownIndex].classList.add("active");
+            }
+        } else if (e.key === "Enter") {
+            if (dropdown.style.display === "block" && translationMatches.length > 0 && translationDropdownIndex >= 0) {
+                e.preventDefault();
+                const match = translationMatches[translationDropdownIndex];
+                document.getElementById("termInput").value = match.term;
+                document.getElementById("translationInput").value = match.translation;
+                if (match.tag) {
+                    document.getElementById("tagInput").value = match.tag;
+                    selectColor(match.color);
+                }
+                dropdown.style.display = "none";
+                document.getElementById("tagInput").focus();
+                const itemIndex = entries.findIndex(entry =>
+                    entry.term === match.term && entry.translation === match.translation
+                );
+                if (itemIndex !== -1) {
+                    highlightItem(itemIndex);
+                }
+            }
+        } else if (e.key === "Tab") {
+            e.preventDefault();
+            dropdown.style.display = "none";
+            translationMatches = [];
+            translationDropdownIndex = -1;
+            document.getElementById("tagInput").focus();
         }
     });
     document.getElementById("tagInput").addEventListener("keydown", function(e) {
