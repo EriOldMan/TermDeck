@@ -1002,7 +1002,9 @@
     }
     
     function handleTagSearch() {
-        const searchTerm = document.getElementById("tagInput").value.trim().toLowerCase();
+        const rawValue = document.getElementById("tagInput").value;
+        const parts = rawValue.split(',');
+        const searchTerm = parts[parts.length - 1].trim().toLowerCase();
         const dropdown = document.getElementById("tagDropdown");
         
         if (!searchTerm) {
@@ -1050,6 +1052,11 @@
             
             div.onmousedown = (e) => {
                 e.preventDefault();
+                const currentVal = document.getElementById("tagInput").value;
+                const currentParts = currentVal.split(',');
+                if (currentParts.length > 1) {
+                    addTag(currentParts.slice(0, -1).join(','));
+                }
                 addTag(tag, color);
                 dropdown.style.display = "none";
             };
@@ -1424,6 +1431,12 @@
                 let color = 'blue';
                 if (miniTag.classList.length > 1) {
                     color = miniTag.classList[1];
+                }
+                
+                const currentVal = document.getElementById("tagInput").value;
+                const currentParts = currentVal.split(',');
+                if (currentParts.length > 1) {
+                    addTag(currentParts.slice(0, -1).join(','));
                 }
                 
                 addTag(tag, color);
