@@ -1,3 +1,25 @@
+## v1.0.0
+
+### New Features
+
+- add clear button
+- collision resolver for import
+
+### Improvements
+
+- change behavior of dupe terms with different tags
+
+### Bug Fixes
+
+- count as exact match when new tag IS in current term's tags
+- add better duplicate handler
+
+### small changes
+
+- move styles and scripts to .css and .js files
+
+---
+
 ## v0.21.1
 
 ### New Features
