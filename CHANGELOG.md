@@ -1,6 +1,35 @@
+## v0.21.1
+
+### New Features
+
+- add mutli tag support
+- add inline tag editing in filter view
+- add keyboard navigation to search dropdowns
+
+### Improvements
+
+- add comma separation support to tag field
+- focus term input on page load
+- add color selector
+- add autocomplete dropdown for translation input
+
+### Bug Fixes
+
+- add suggestion for tags after comma
+- update current term instead of adding a new entry
+- change tag headers' color to be visible in light mode
+
+### small changes
+
+- move index.html to root folder
+- rename and empty lines remove
+
+---
+
 ## v0.14.1
 
 ### Features
+
 - add edit button
 - add import export support
 - add tag support
@@ -12,12 +41,14 @@
 - add save
 
 ### Improvements
+
 - refactor export file name to also include the time
 - change tag item color in night mode
 - expand enter by Enter to tag field
 - add real-time seach support to label field
 
 ### Refactors
+
 - add src folder
 - remove buttons' names and reposition add button
 - strict duplicate behavior to only the Term
@@ -25,4 +56,5 @@
 - apply real-time search to Term field
 
 ### Bug Fixes
+
 - fix save issue
