@@ -242,6 +242,11 @@
         padding-left: 20px;
     }
     
+    .dropdown-item.active {
+        background: linear-gradient(90deg, #e8f0fe 0%, #f0e7ff 100%);
+        padding-left: 20px;
+    }
+    
     body.night-mode .dropdown-item:hover {
         background: linear-gradient(90deg, #2a2a4e 0%, #3a3a5e 100%);
         padding-left: 20px;
@@ -340,6 +345,11 @@
     
     body.night-mode .tag-dropdown-item:hover {
         background: linear-gradient(90deg, #2a2a4e 0%, #3a3a5e 100%);
+        padding-left: 16px;
+    }
+    
+    .tag-dropdown-item.active {
+        background: linear-gradient(90deg, #e8f0fe 0%, #f0e7ff 100%);
         padding-left: 16px;
     }
     
@@ -574,6 +584,10 @@
     let currentFilter = 'all';
     let selectedColor = 'blue';
     let editingIndex = null;
+    let termMatches = [];
+    let termDropdownIndex = -1;
+    let tagMatches = [];
+    let tagDropdownIndex = -1;
 
     // Load saved entries
     function loadEntries() {
@@ -758,6 +772,7 @@
         
         if (!searchTerm) {
             dropdown.style.display = "none";
+            tagDropdownIndex = -1;
             return;
         }
         
@@ -776,10 +791,12 @@
         
         if (matches.length === 0) {
             dropdown.style.display = "none";
+            tagDropdownIndex = -1;
             return;
         }
         
         dropdown.innerHTML = "";
+        tagDropdownIndex = -1;
         matches.forEach(([tag, color]) => {
             const div = document.createElement("div");
             div.className = "tag-dropdown-item";
@@ -807,6 +824,7 @@
     function hideTagDropdown() {
         setTimeout(() => {
             document.getElementById("tagDropdown").style.display = "none";
+            tagDropdownIndex = -1;
         }, 200);
     }
     
@@ -905,6 +923,8 @@
         
         if (!searchTerm) {
             dropdown.style.display = "none";
+            termMatches = [];
+            termDropdownIndex = -1;
             return;
         }
 
@@ -917,9 +937,13 @@
 
         if (matches.length === 0) {
             dropdown.style.display = "none";
+            termMatches = [];
+            termDropdownIndex = -1;
             return;
         }
 
+        termMatches = matches;
+        termDropdownIndex = -1;
         matches.forEach(match => {
             const div = document.createElement("div");
             div.className = "dropdown-item";
@@ -952,6 +976,8 @@
     function hideDropdown() {
         setTimeout(() => {
             document.getElementById("dropdown").style.display = "none";
+            termMatches = [];
+            termDropdownIndex = -1;
         }, 200);
     }
 
@@ -964,6 +990,11 @@
     function handleKeyPress(event) {
         if (event.key === "Enter") {
             event.preventDefault();
+            const dropdown = document.getElementById("dropdown");
+            const tagDropdown = document.getElementById("tagDropdown");
+            if (dropdown.style.display === "block" || tagDropdown.style.display === "block") {
+                return;
+            }
             addItem();
         }
     }
@@ -991,6 +1022,92 @@
     document.getElementById("termInput").addEventListener("input", handleTermInput);
     document.getElementById("termInput").addEventListener("focus", handleTermInput);
     document.getElementById("termInput").addEventListener("blur", hideDropdown);
+    document.getElementById("termInput").addEventListener("keydown", function(e) {
+        const dropdown = document.getElementById("dropdown");
+        const items = Array.from(dropdown.querySelectorAll(".dropdown-item"));
+        if (e.key === "ArrowDown") {
+            if (dropdown.style.display === "block" && termMatches.length > 0) {
+                e.preventDefault();
+                termDropdownIndex = Math.min(termDropdownIndex + 1, termMatches.length - 1);
+                items.forEach(i => i.classList.remove("active"));
+                if (termDropdownIndex >= 0) items[termDropdownIndex].classList.add("active");
+            }
+        } else if (e.key === "ArrowUp") {
+            if (dropdown.style.display === "block" && termMatches.length > 0) {
+                e.preventDefault();
+                termDropdownIndex = Math.max(termDropdownIndex - 1, -1);
+                items.forEach(i => i.classList.remove("active"));
+                if (termDropdownIndex >= 0) items[termDropdownIndex].classList.add("active");
+            }
+        } else if (e.key === "Enter") {
+            if (dropdown.style.display === "block" && termMatches.length > 0 && termDropdownIndex >= 0) {
+                e.preventDefault();
+                const match = termMatches[termDropdownIndex];
+                document.getElementById("termInput").value = match.term;
+                document.getElementById("translationInput").value = match.translation;
+                if (match.tag) {
+                    document.getElementById("tagInput").value = match.tag;
+                    selectColor(match.color);
+                }
+                dropdown.style.display = "none";
+                document.getElementById("translationInput").focus();
+                const itemIndex = entries.findIndex(entry => 
+                    entry.term === match.term && entry.translation === match.translation
+                );
+                if (itemIndex !== -1) {
+                    highlightItem(itemIndex);
+                }
+            }
+        } else if (e.key === "Tab") {
+            e.preventDefault();
+            dropdown.style.display = "none";
+            termMatches = [];
+            termDropdownIndex = -1;
+            document.getElementById("translationInput").focus();
+        }
+    });
+    document.getElementById("tagInput").addEventListener("keydown", function(e) {
+        const dropdown = document.getElementById("tagDropdown");
+        const items = Array.from(dropdown.querySelectorAll(".tag-dropdown-item"));
+        if (e.key === "ArrowDown") {
+            if (dropdown.style.display === "block" && items.length > 0) {
+                e.preventDefault();
+                tagDropdownIndex = Math.min(tagDropdownIndex + 1, items.length - 1);
+                items.forEach(i => i.classList.remove("active"));
+                if (tagDropdownIndex >= 0) items[tagDropdownIndex].classList.add("active");
+            }
+        } else if (e.key === "ArrowUp") {
+            if (dropdown.style.display === "block" && items.length > 0) {
+                e.preventDefault();
+                tagDropdownIndex = Math.max(tagDropdownIndex - 1, -1);
+                items.forEach(i => i.classList.remove("active"));
+                if (tagDropdownIndex >= 0) items[tagDropdownIndex].classList.add("active");
+            }
+        } else if (e.key === "Enter") {
+            if (dropdown.style.display === "block" && items.length > 0 && tagDropdownIndex >= 0) {
+                e.preventDefault();
+                const item = items[tagDropdownIndex];
+                const tag = item.textContent.trim();
+                const color = getComputedStyle(item.querySelector(".mini-tag")).background;
+                document.getElementById("tagInput").value = tag;
+                dropdown.style.display = "none";
+                const options = document.querySelectorAll(".color-option");
+                options.forEach(o => {
+                    const optColor = getComputedStyle(o).background;
+                    if (optColor === color) {
+                        selectColor(o.getAttribute("data-color"));
+                    }
+                });
+                document.querySelector('button[onclick="addItem()"]').focus();
+            }
+        } else if (e.key === "Tab") {
+            e.preventDefault();
+            dropdown.style.display = "none";
+            tagMatches = [];
+            tagDropdownIndex = -1;
+            document.querySelector('button[onclick="addItem()"]').focus();
+        }
+    });
 
     // Load entries on start
     loadEntries();
