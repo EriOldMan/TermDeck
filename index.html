@@ -1319,11 +1319,13 @@
                             const sameTerm = existing.term === newItem.term;
                             const sameTrans = existing.translation === newItem.translation;
                             
-                            const existingTags = existing.tags ? existing.tags.map(t => t.text).sort().join('|') : '';
-                            const newTags = newItem.tags ? newItem.tags.map(t => t.text).sort().join('|') : '';
-                            const sameTags = existingTags === newTags;
+                            // Check if new item tags are a subset of existing tags (or equal)
+                            // If all tags in new item already exist in the current entry, we consider it "covered" and skip
+                            const isTagSubset = (newItem.tags || []).every(nt => 
+                                (existing.tags || []).some(et => et.text === nt.text)
+                            );
 
-                            if (sameTerm && sameTrans && sameTags) {
+                            if (sameTerm && sameTrans && isTagSubset) {
                                 // Exact duplicate. Keep existing (skip).
                                 importStats.skipped++;
                             } else {
