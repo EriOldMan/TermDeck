@@ -705,6 +705,22 @@
     <div id="importStatus" class="import-status"></div>
 </div>
 
+<div id="clearConfirmModal" class="modal-overlay">
+    <div class="modal">
+        <h3>⚠️ Clear Tab</h3>
+        <p style="margin-top: 8px; opacity: 0.8; font-size: 14px;">
+            Are you sure you want to delete <span id="clearCount" style="font-weight:bold"></span> entries from "<span id="clearTagName" style="font-weight:bold"></span>"?
+            <br><br>
+            This action cannot be undone.
+        </p>
+        
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="document.getElementById('clearConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn-danger" onclick="confirmClearTab()">Delete All</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let entries = [];
     let currentFilter = 'all';
@@ -1030,6 +1046,26 @@
             filterContainer.appendChild(editControl);
         }
         
+        // Add Clear Button if there are entries to clear
+        const filteredCount = currentFilter === 'all' 
+            ? entries.length 
+            : entries.filter(e => e.tags.some(t => t.text === currentFilter)).length;
+            
+        if (filteredCount > 0) {
+            const clearBtn = document.createElement("div");
+            clearBtn.textContent = "🗑️ Clear Tab";
+            clearBtn.style.cursor = "pointer";
+            clearBtn.style.padding = "6px 14px";
+            clearBtn.style.borderRadius = "20px";
+            clearBtn.style.fontSize = "13px";
+            clearBtn.style.fontWeight = "600";
+            clearBtn.style.marginLeft = "auto"; // Push to right
+            clearBtn.style.color = "#ff4757";
+            clearBtn.style.background = "rgba(255, 71, 87, 0.1)";
+            clearBtn.onclick = () => showClearConfirm();
+            filterContainer.appendChild(clearBtn);
+        }
+        
         uniqueTags.forEach((color, tag) => {
             const count = entries.filter(e => e.tags.some(t => t.text === tag)).length;
             if (currentFilter === tag && tagEditMode) {
@@ -1180,6 +1216,30 @@
         renderFilters();
     }
     
+    function showClearConfirm() {
+        const filteredCount = currentFilter === 'all' 
+            ? entries.length 
+            : entries.filter(e => e.tags.some(t => t.text === currentFilter)).length;
+            
+        document.getElementById('clearCount').textContent = filteredCount;
+        document.getElementById('clearTagName').textContent = currentFilter === 'all' ? 'All Items' : currentFilter;
+        document.getElementById('clearConfirmModal').style.display = 'flex';
+    }
+
+    function confirmClearTab() {
+        if (currentFilter === 'all') {
+            entries = [];
+        } else {
+            // Remove entries that have the current tag
+            entries = entries.filter(e => !e.tags.some(t => t.text === currentFilter));
+        }
+        
+        saveEntries();
+        renderList();
+        renderFilters(); // This will re-render tabs, effectively updating counts
+        document.getElementById('clearConfirmModal').style.display = 'none';
+    }
+
     function handleTagSearch() {
         const rawValue = document.getElementById("tagInput").value;
         const parts = rawValue.split(',');
