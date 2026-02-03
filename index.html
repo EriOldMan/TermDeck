@@ -567,7 +567,7 @@
     <button style="margin-top: 8px;" onclick="addItem()">➕</button>
 </div>
 
-<h2>📚 Your Vocabulary</h2>
+<h2>�� Your Vocabulary</h2>
 <div class="card">
     <div id="filterContainer" class="filter-container"></div>
     <div id="list"></div>
@@ -726,11 +726,23 @@
             return;
         }
         
-        filterContainer.innerHTML = `
-            <div class="filter-tag all ${currentFilter === 'all' ? 'active' : ''}" onclick="filterByTag('all')">
-                All (${entries.length})
-            </div>
-        `;
+        filterContainer.innerHTML = "";
+        const allDiv = document.createElement("div");
+        allDiv.className = `filter-tag all ${currentFilter === 'all' ? 'active' : ''}`;
+        allDiv.textContent = `All (${entries.length})`;
+        allDiv.onclick = () => filterByTag('all');
+        filterContainer.appendChild(allDiv);
+        if (currentFilter !== 'all') {
+            const editControl = document.createElement("div");
+            editControl.textContent = "✏️";
+            editControl.style.cursor = "pointer";
+            editControl.style.padding = "6px 14px";
+            editControl.style.borderRadius = "20px";
+            editControl.style.fontSize = "13px";
+            editControl.style.fontWeight = "600";
+            editControl.onclick = () => beginTagInlineEdit();
+            filterContainer.appendChild(editControl);
+        }
         
         // Group by unique tag names
         const tagMap = new Map();
@@ -742,11 +754,37 @@
         
         tagMap.forEach((color, tag) => {
             const count = entries.filter(e => e.tag === tag).length;
-            const filterDiv = document.createElement("div");
-            filterDiv.className = `filter-tag ${color} ${currentFilter === tag ? 'active' : ''}`;
-            filterDiv.textContent = `${tag} (${count})`;
-            filterDiv.onclick = () => filterByTag(tag);
-            filterContainer.appendChild(filterDiv);
+            if (currentFilter === tag && tagEditMode) {
+                const editDiv = document.createElement("div");
+                editDiv.className = `filter-tag ${color} active`;
+                const input = document.createElement("input");
+                input.id = "tagEditInline";
+                input.value = tag;
+                input.style.padding = "6px 10px";
+                input.style.borderRadius = "12px";
+                input.style.border = "2px solid white";
+                input.style.fontWeight = "600";
+                input.style.fontSize = "13px";
+                input.onkeydown = (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitTagInlineEdit();
+                    } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelTagInlineEdit();
+                    }
+                };
+                input.onblur = () => commitTagInlineEdit();
+                editDiv.appendChild(input);
+                filterContainer.appendChild(editDiv);
+                setTimeout(() => input.focus(), 0);
+            } else {
+                const filterDiv = document.createElement("div");
+                filterDiv.className = `filter-tag ${color} ${currentFilter === tag ? 'active' : ''}`;
+                filterDiv.textContent = `${tag} (${count})`;
+                filterDiv.onclick = () => filterByTag(tag);
+                filterContainer.appendChild(filterDiv);
+            }
         });
     }
     
@@ -764,6 +802,44 @@
             option.classList.remove('selected');
         });
         document.querySelector(`.color-option[data-color="${color}"]`).classList.add('selected');
+    }
+    
+    function renameTag(oldTag, newTag, newColor) {
+        if (oldTag === newTag) {
+            entries = entries.map(e => e.tag === oldTag ? { term: e.term, translation: e.translation, tag: e.tag, color: newColor } : e);
+        } else {
+            entries = entries.map(e => e.tag === oldTag ? { term: e.term, translation: e.translation, tag: newTag, color: newColor } : e);
+            if (currentFilter === oldTag) currentFilter = newTag;
+            if (document.getElementById("tagInput").value.trim() === oldTag) {
+                document.getElementById("tagInput").value = newTag;
+            }
+        }
+        entries.sort((a, b) => a.term.localeCompare(b.term));
+        saveEntries();
+        renderList();
+        renderFilters();
+        handleTagSearch();
+    }
+    
+    let tagEditMode = false;
+    function beginTagInlineEdit() {
+        if (currentFilter === 'all') return;
+        tagEditMode = true;
+        renderFilters();
+    }
+    function commitTagInlineEdit() {
+        const input = document.getElementById("tagEditInline");
+        if (!input) { tagEditMode = false; renderFilters(); return; }
+        const newTag = input.value.trim();
+        if (!newTag) { tagEditMode = false; renderFilters(); return; }
+        const oldTag = currentFilter;
+        const newColor = selectedColor;
+        tagEditMode = false;
+        renameTag(oldTag, newTag, newColor);
+    }
+    function cancelTagInlineEdit() {
+        tagEditMode = false;
+        renderFilters();
     }
     
     function handleTagSearch() {
