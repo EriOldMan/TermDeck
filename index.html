@@ -566,9 +566,10 @@
         <div id="translationDropdown" class="dropdown"></div>
     </div>
     <div class="tag-input-container">
-        <input id="tagInput" type="text" placeholder="Tag label (optional, e.g., Verbs, Food)" oninput="handleTagSearch()" onfocus="handleTagSearch()" onblur="hideTagDropdown()" onkeypress="handleKeyPress(event)">
+        <input id="tagInput" type="text" placeholder="Type tag & press Enter" oninput="handleTagSearch()" onfocus="handleTagSearch()" onblur="hideTagDropdown()" onkeypress="handleKeyPress(event)">
         <div id="tagDropdown" class="tag-dropdown"></div>
     </div>
+    <div id="activeTags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
     <div class="color-picker">
         <div class="color-option blue selected" data-color="blue" onclick="selectColor('blue')"></div>
         <div class="color-option red" data-color="red" onclick="selectColor('red')"></div>
@@ -598,6 +599,7 @@
     let entries = [];
     let currentFilter = 'all';
     let selectedColor = 'blue';
+    let currentEntryTags = [];
     let editingIndex = null;
     let termMatches = [];
     let termDropdownIndex = -1;
@@ -614,6 +616,18 @@
             const saved = localStorage.getItem("vocab_entries");
             if (saved) {
                 entries = JSON.parse(saved);
+                // Migration to multi-tags
+                entries.forEach(e => {
+                    if (!e.tags) {
+                        if (e.tag) {
+                            e.tags = [{ text: e.tag, color: e.color || 'blue' }];
+                        } else {
+                            e.tags = [];
+                        }
+                        delete e.tag;
+                        delete e.color;
+                    }
+                });
                 renderList();
             }
         } catch (error) {
@@ -621,22 +635,61 @@
         }
     }
 
+    function addTag(text = null, color = null) {
+        const tagText = text || document.getElementById("tagInput").value.trim();
+        if (!tagText) return;
+        
+        // Prevent duplicates in current session
+        if (currentEntryTags.some(t => t.text === tagText)) return;
+        
+        currentEntryTags.push({
+            text: tagText,
+            color: color || selectedColor
+        });
+        
+        renderActiveTags();
+        document.getElementById("tagInput").value = "";
+        document.getElementById("tagInput").focus();
+    }
+
+    function removeTag(index) {
+        currentEntryTags.splice(index, 1);
+        renderActiveTags();
+    }
+
+    function renderActiveTags() {
+        const container = document.getElementById("activeTags");
+        container.innerHTML = "";
+        currentEntryTags.forEach((t, i) => {
+            const tag = document.createElement("span");
+            tag.className = `tag ${t.color}`;
+            tag.innerHTML = `${escapeHtml(t.text)} <span style="cursor:pointer;margin-left:4px;opacity:0.8" onclick="removeTag(${i})">×</span>`;
+            container.appendChild(tag);
+        });
+    }
+
     async function addItem() {
         const term = document.getElementById("termInput").value.trim();
         const translation = document.getElementById("translationInput").value.trim();
-        const tag = document.getElementById("tagInput").value.trim();
+        
+        const pendingTag = document.getElementById("tagInput").value.trim();
+        if (pendingTag) {
+            addTag(pendingTag);
+        }
         
         if (!term || !translation) return;
 
+        const newEntry = { term, translation, tags: [...currentEntryTags] };
+
         if (editingIndex !== null) {
             // Update existing entry
-            entries[editingIndex] = { term, translation, tag: tag || null, color: selectedColor };
+            entries[editingIndex] = newEntry;
             entries.sort((a, b) => a.term.localeCompare(b.term));
             editingIndex = null;
             document.querySelector('button[onclick="addItem()"]').textContent = "➕";
         } else {
             // Add new entry
-            entries.push({ term, translation, tag: tag || null, color: selectedColor });
+            entries.push(newEntry);
             entries.sort((a, b) => a.term.localeCompare(b.term));
         }
         
@@ -645,6 +698,8 @@
         document.getElementById("termInput").value = "";
         document.getElementById("translationInput").value = "";
         document.getElementById("tagInput").value = "";
+        currentEntryTags = [];
+        renderActiveTags();
         selectColor('blue');
         renderList();
         renderFilters();
@@ -669,8 +724,12 @@
         
         document.getElementById("termInput").value = entry.term;
         document.getElementById("translationInput").value = entry.translation;
-        document.getElementById("tagInput").value = entry.tag || "";
-        selectColor(entry.color);
+        document.getElementById("tagInput").value = "";
+        
+        currentEntryTags = entry.tags ? JSON.parse(JSON.stringify(entry.tags)) : [];
+        renderActiveTags();
+        
+        selectColor('blue');
         
         // Change button text to indicate editing mode
         document.querySelector('button[onclick="addItem()"]').textContent = "💾 Update";
@@ -687,6 +746,8 @@
         document.getElementById("termInput").value = "";
         document.getElementById("translationInput").value = "";
         document.getElementById("tagInput").value = "";
+        currentEntryTags = [];
+        renderActiveTags();
         selectColor('blue');
         document.querySelector('button[onclick="addItem()"]').textContent = "➕";
     }
@@ -706,7 +767,7 @@
 
         const filteredEntries = currentFilter === 'all' 
             ? entries 
-            : entries.filter(e => e.tag === currentFilter);
+            : entries.filter(e => e.tags.some(t => t.text === currentFilter));
 
         if (filteredEntries.length === 0) {
             list.innerHTML = "<div class='empty-state'>🔍 No vocabulary entries found.</div>";
@@ -719,14 +780,14 @@
             div.className = "item";
             div.id = `item-${originalIndex}`;
             
-            const tagHtml = e.tag 
-                ? `<span class="tag ${e.color}">${escapeHtml(e.tag)}</span>` 
+            const tagsHtml = e.tags && e.tags.length > 0
+                ? e.tags.map(t => `<span class="tag ${t.color}">${escapeHtml(t.text)}</span>`).join('')
                 : '';
             
             div.innerHTML = `
                 <span>
                     <span class="term">${escapeHtml(e.term)}</span> : ${escapeHtml(e.translation)}
-                    ${tagHtml}
+                    ${tagsHtml}
                 </span>
                 <div class="button-group">
                     <button class="edit-btn" onclick="editItem(${originalIndex})">✏️</button>
@@ -739,9 +800,18 @@
     
     function renderFilters() {
         const filterContainer = document.getElementById("filterContainer");
-        const uniqueTags = [...new Set(entries.filter(e => e.tag).map(e => ({ tag: e.tag, color: e.color })))];
+        const uniqueTags = new Map();
+        entries.forEach(e => {
+            if (e.tags) {
+                e.tags.forEach(t => {
+                     if (!uniqueTags.has(t.text)) {
+                         uniqueTags.set(t.text, t.color);
+                     }
+                });
+            }
+        });
         
-        if (uniqueTags.length === 0) {
+        if (uniqueTags.size === 0) {
             filterContainer.innerHTML = "";
             return;
         }
@@ -752,6 +822,7 @@
         allDiv.textContent = `All (${entries.length})`;
         allDiv.onclick = () => filterByTag('all');
         filterContainer.appendChild(allDiv);
+
         if (currentFilter !== 'all') {
             const editControl = document.createElement("div");
             editControl.textContent = "✏️";
@@ -764,16 +835,8 @@
             filterContainer.appendChild(editControl);
         }
         
-        // Group by unique tag names
-        const tagMap = new Map();
-        entries.forEach(e => {
-            if (e.tag && !tagMap.has(e.tag)) {
-                tagMap.set(e.tag, e.color);
-            }
-        });
-        
-        tagMap.forEach((color, tag) => {
-            const count = entries.filter(e => e.tag === tag).length;
+        uniqueTags.forEach((color, tag) => {
+            const count = entries.filter(e => e.tags.some(t => t.text === tag)).length;
             if (currentFilter === tag && tagEditMode) {
                 const editDiv = document.createElement("div");
                 editDiv.className = `filter-tag ${color} active`;
@@ -804,10 +867,21 @@
                 };
                 const colorPicker = document.createElement("div");
                 colorPicker.className = "color-picker";
+                // Inline color picker style tweak for compactness
+                colorPicker.style.display = "inline-flex"; 
+                colorPicker.style.marginLeft = "8px";
+                colorPicker.style.padding = "0";
+                colorPicker.style.background = "transparent";
+                
                 const colors = ["blue","red","green","yellow","purple","orange","pink","teal"];
                 colors.forEach(c => {
                     const opt = document.createElement("div");
                     opt.className = "color-option " + c + (tagEditSelectedColor === c ? " selected" : "");
+                    // Make them smaller for inline
+                    opt.style.width = "20px";
+                    opt.style.height = "20px";
+                    opt.style.borderWidth = "2px";
+                    
                     opt.onmousedown = (e) => {
                         e.preventDefault();
                         tagEditSuppressBlurCommit = true;
@@ -852,15 +926,28 @@
     }
     
     function renameTag(oldTag, newTag, newColor) {
-        if (oldTag === newTag) {
-            entries = entries.map(e => e.tag === oldTag ? { term: e.term, translation: e.translation, tag: e.tag, color: newColor } : e);
-        } else {
-            entries = entries.map(e => e.tag === oldTag ? { term: e.term, translation: e.translation, tag: newTag, color: newColor } : e);
-            if (currentFilter === oldTag) currentFilter = newTag;
-            if (document.getElementById("tagInput").value.trim() === oldTag) {
-                document.getElementById("tagInput").value = newTag;
+        entries.forEach(e => {
+            if (e.tags) {
+                e.tags.forEach(t => {
+                    if (t.text === oldTag) {
+                        t.text = newTag;
+                        t.color = newColor;
+                    }
+                });
             }
-        }
+        });
+        
+        if (currentFilter === oldTag) currentFilter = newTag;
+        
+        // Update active tags in edit mode too
+        currentEntryTags.forEach(t => {
+            if (t.text === oldTag) {
+                t.text = newTag;
+                t.color = newColor;
+            }
+        });
+        renderActiveTags();
+        
         entries.sort((a, b) => a.term.localeCompare(b.term));
         saveEntries();
         renderList();
@@ -871,8 +958,15 @@
     let tagEditMode = false;
     function beginTagInlineEdit() {
         if (currentFilter === 'all') return;
-        const found = entries.find(e => e.tag === currentFilter);
-        tagEditSelectedColor = found ? found.color : selectedColor;
+        let foundColor = 'blue';
+        for (const e of entries) {
+            const t = e.tags.find(t => t.text === currentFilter);
+            if (t) {
+                foundColor = t.color;
+                break;
+            }
+        }
+        tagEditSelectedColor = foundColor;
         tagEditMode = true;
         renderFilters();
     }
@@ -882,7 +976,7 @@
         const newTag = input.value.trim();
         if (!newTag) { tagEditMode = false; renderFilters(); return; }
         const oldTag = currentFilter;
-        const newColor = tagEditSelectedColor || selectedColor;
+        const newColor = tagEditSelectedColor || 'blue';
         tagEditMode = false;
         renameTag(oldTag, newTag, newColor);
     }
@@ -904,8 +998,12 @@
         // Get unique tags with their colors
         const uniqueTags = new Map();
         entries.forEach(e => {
-            if (e.tag && !uniqueTags.has(e.tag)) {
-                uniqueTags.set(e.tag, e.color);
+            if (e.tags) {
+                e.tags.forEach(t => {
+                     if (!uniqueTags.has(t.text)) {
+                         uniqueTags.set(t.text, t.color);
+                     }
+                });
             }
         });
         
@@ -936,8 +1034,7 @@
             
             div.onmousedown = (e) => {
                 e.preventDefault();
-                document.getElementById("tagInput").value = tag;
-                selectColor(color);
+                addTag(tag, color);
                 dropdown.style.display = "none";
             };
             dropdown.appendChild(div);
@@ -1000,11 +1097,18 @@
                         const termKey = item.term.toLowerCase();
                         
                         if (!existingTerms.has(termKey)) {
+                            // Normalize tags
+                            let tags = [];
+                            if (item.tags) {
+                                tags = item.tags;
+                            } else if (item.tag) {
+                                tags = [{ text: item.tag, color: item.color || 'blue' }];
+                            }
+
                             entries.push({
                                 term: item.term,
                                 translation: item.translation,
-                                tag: item.tag || null,
-                                color: item.color || 'blue'
+                                tags: tags
                             });
                             existingTerms.add(termKey);
                             addedCount++;
@@ -1077,9 +1181,12 @@
                 e.preventDefault();
                 document.getElementById("termInput").value = match.term;
                 document.getElementById("translationInput").value = match.translation;
-                if (match.tag) {
-                    document.getElementById("tagInput").value = match.tag;
-                    selectColor(match.color);
+                if (match.tags) {
+                    currentEntryTags = JSON.parse(JSON.stringify(match.tags));
+                    renderActiveTags();
+                } else {
+                    currentEntryTags = [];
+                    renderActiveTags();
                 }
                 dropdown.style.display = "none";
                 document.getElementById("translationInput").focus();
@@ -1136,9 +1243,12 @@
                 e.preventDefault();
                 document.getElementById("termInput").value = match.term;
                 document.getElementById("translationInput").value = match.translation;
-                if (match.tag) {
-                    document.getElementById("tagInput").value = match.tag;
-                    selectColor(match.color);
+                if (match.tags) {
+                    currentEntryTags = JSON.parse(JSON.stringify(match.tags));
+                    renderActiveTags();
+                } else {
+                    currentEntryTags = [];
+                    renderActiveTags();
                 }
                 dropdown.style.display = "none";
                 document.getElementById("tagInput").focus();
@@ -1176,6 +1286,15 @@
             if (dropdown.style.display === "block" || translationDropdown.style.display === "block" || tagDropdown.style.display === "block") {
                 return;
             }
+            
+            if (document.activeElement === document.getElementById("tagInput")) {
+                 const val = document.getElementById("tagInput").value.trim();
+                 if (val) {
+                     addTag();
+                     return;
+                 }
+            }
+            
             addItem();
         }
     }
