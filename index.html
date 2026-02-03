@@ -605,6 +605,8 @@
     let tagDropdownIndex = -1;
     let translationMatches = [];
     let translationDropdownIndex = -1;
+    let tagEditSelectedColor = null;
+    let tagEditSuppressBlurCommit = false;
 
     // Load saved entries
     function loadEntries() {
@@ -791,8 +793,35 @@
                         cancelTagInlineEdit();
                     }
                 };
-                input.onblur = () => commitTagInlineEdit();
+                input.onblur = () => {
+                    if (tagEditSuppressBlurCommit) {
+                        tagEditSuppressBlurCommit = false;
+                        setTimeout(() => input.focus(), 0);
+                        return;
+                    }
+                    commitTagInlineEdit();
+                };
+                const colorPicker = document.createElement("div");
+                colorPicker.className = "color-picker";
+                const colors = ["blue","red","green","yellow","purple","orange","pink","teal"];
+                colors.forEach(c => {
+                    const opt = document.createElement("div");
+                    opt.className = "color-option " + c + (tagEditSelectedColor === c ? " selected" : "");
+                    opt.onmousedown = (e) => {
+                        e.preventDefault();
+                        tagEditSuppressBlurCommit = true;
+                    };
+                    opt.onclick = () => {
+                        tagEditSelectedColor = c;
+                        Array.from(colorPicker.querySelectorAll(".color-option")).forEach(o => o.classList.remove("selected"));
+                        opt.classList.add("selected");
+                        tagEditSuppressBlurCommit = false;
+                        input.focus();
+                    };
+                    colorPicker.appendChild(opt);
+                });
                 editDiv.appendChild(input);
+                editDiv.appendChild(colorPicker);
                 filterContainer.appendChild(editDiv);
                 setTimeout(() => input.focus(), 0);
             } else {
@@ -841,6 +870,8 @@
     let tagEditMode = false;
     function beginTagInlineEdit() {
         if (currentFilter === 'all') return;
+        const found = entries.find(e => e.tag === currentFilter);
+        tagEditSelectedColor = found ? found.color : selectedColor;
         tagEditMode = true;
         renderFilters();
     }
@@ -850,7 +881,7 @@
         const newTag = input.value.trim();
         if (!newTag) { tagEditMode = false; renderFilters(); return; }
         const oldTag = currentFilter;
-        const newColor = selectedColor;
+        const newColor = tagEditSelectedColor || selectedColor;
         tagEditMode = false;
         renameTag(oldTag, newTag, newColor);
     }
