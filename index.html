@@ -804,7 +804,8 @@
         }
         
         if (!term || !translation) return;
-
+        
+        // Prepare new entry object
         const newEntry = { term, translation, tags: [...currentEntryTags] };
 
         if (editingIndex !== null) {
@@ -813,12 +814,41 @@
             entries.sort((a, b) => a.term.localeCompare(b.term));
             editingIndex = null;
             document.querySelector('button[onclick="addItem()"]').textContent = "➕";
+            finishAddItem();
         } else {
+            // Check for duplicates
+            const existingIndex = entries.findIndex(e => 
+                e.term.toLowerCase() === term.toLowerCase() && 
+                e.translation.toLowerCase() === translation.toLowerCase()
+            );
+
+            if (existingIndex !== -1) {
+                const existing = entries[existingIndex];
+                
+                // Compare tags
+                const existingTags = existing.tags ? existing.tags.map(t => t.text).sort().join('|') : '';
+                const newTags = newEntry.tags ? newEntry.tags.map(t => t.text).sort().join('|') : '';
+                
+                if (existingTags === newTags) {
+                    // Exact duplicate: ignore
+                    alert("This entry already exists exactly as is!");
+                    finishAddItem(); // Clear inputs
+                    return;
+                } else {
+                    // Conflict: Show modal
+                    showManualCollisionModal(existingIndex, newEntry);
+                    return;
+                }
+            }
+
             // Add new entry
             entries.push(newEntry);
             entries.sort((a, b) => a.term.localeCompare(b.term));
+            finishAddItem();
         }
-        
+    }
+    
+    function finishAddItem() {
         saveEntries();
 
         document.getElementById("termInput").value = "";
@@ -830,6 +860,45 @@
         renderList();
         renderFilters();
         document.getElementById("termInput").focus();
+    }
+    
+    let manualCollisionState = null;
+
+    function showManualCollisionModal(existingIndex, newEntry) {
+        manualCollisionState = { existingIndex, newEntry };
+        const existing = entries[existingIndex];
+        
+        document.getElementById('manualCollisionTerm').textContent = existing.term;
+        document.getElementById('manualExistingEntryDetails').innerHTML = formatEntryDetails(existing);
+        document.getElementById('manualNewEntryDetails').innerHTML = formatEntryDetails(newEntry);
+        
+        document.getElementById('manualCollisionModal').style.display = 'flex';
+    }
+    
+    function resolveManualCollision(action) {
+        if (!manualCollisionState) return;
+        const { existingIndex, newEntry } = manualCollisionState;
+        
+        if (action === 'overwrite') {
+            entries[existingIndex] = newEntry;
+            entries.sort((a, b) => a.term.localeCompare(b.term));
+        } else if (action === 'merge') {
+            // Merge tags: add new tags to existing tags if they don't exist
+            const existing = entries[existingIndex];
+            newEntry.tags.forEach(newTag => {
+                if (!existing.tags.some(t => t.text === newTag.text)) {
+                    existing.tags.push(newTag);
+                }
+            });
+            // Update the entry in list (no need to sort as term/trans didn't change)
+        } else {
+            // Cancel - do nothing to entries, just close modal
+             document.getElementById('manualCollisionModal').style.display = 'none';
+             return; // Don't clear inputs so user can edit
+        }
+        
+        document.getElementById('manualCollisionModal').style.display = 'none';
+        finishAddItem();
     }
 
     async function deleteItem(index) {
@@ -1688,6 +1757,36 @@
         }
     }
 </script>
+
+<div id="manualCollisionModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Duplicate Entry Detected</h3>
+        <p style="margin-top: 8px; opacity: 0.8; font-size: 14px;">
+            An entry with the term "<span id="manualCollisionTerm" style="font-weight:bold"></span>" already exists with the same translation but different tags.
+        </p>
+        
+        <div class="comparison-grid">
+            <div class="comparison-col">
+                <h4>Existing Entry</h4>
+                <div class="comparison-box" id="manualExistingEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+            <div class="comparison-col">
+                <h4>New Entry</h4>
+                <div class="comparison-box" id="manualNewEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="resolveManualCollision('cancel')">Cancel</button>
+            <button onclick="resolveManualCollision('merge')">Add New Tags</button>
+            <button class="btn-danger" onclick="resolveManualCollision('overwrite')">Overwrite</button>
+        </div>
+    </div>
+</div>
 
 <div id="collisionModal" class="modal-overlay">
     <div class="modal">
