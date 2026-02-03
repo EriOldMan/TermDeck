@@ -636,15 +636,31 @@
     }
 
     function addTag(text = null, color = null) {
-        const tagText = text || document.getElementById("tagInput").value.trim();
-        if (!tagText) return;
+        const rawInput = text || document.getElementById("tagInput").value;
+        if (!rawInput) return;
         
-        // Prevent duplicates in current session
-        if (currentEntryTags.some(t => t.text === tagText)) return;
-        
-        currentEntryTags.push({
-            text: tagText,
-            color: color || selectedColor
+        const tags = rawInput.split(',').map(t => t.trim()).filter(t => t);
+        if (tags.length === 0) return;
+
+        const colors = ['blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'teal'];
+        const useRandomColor = tags.length > 1;
+
+        tags.forEach(tagText => {
+            if (currentEntryTags.some(t => t.text === tagText)) return;
+            
+            let tagColor;
+            if (color) {
+                tagColor = color;
+            } else if (useRandomColor) {
+                tagColor = colors[Math.floor(Math.random() * colors.length)];
+            } else {
+                tagColor = selectedColor;
+            }
+            
+            currentEntryTags.push({
+                text: tagText,
+                color: tagColor
+            });
         });
         
         renderActiveTags();
