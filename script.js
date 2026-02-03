@@ -622,16 +622,24 @@
 
     function undoLastImport() {
         if (!preImportBackup) return;
+        document.getElementById('undoConfirmModal').style.display = 'flex';
+    }
+
+    function closeUndoModal() {
+        document.getElementById('undoConfirmModal').style.display = 'none';
+    }
+
+    function confirmUndo() {
+        if (!preImportBackup) return;
         
-        if (confirm('Are you sure you want to undo the last import? This will revert all changes.')) {
-            entries = JSON.parse(JSON.stringify(preImportBackup));
-            saveEntries();
-            renderList();
-            renderFilters();
-            
-            showImportStatus('Import undone. Database reverted to previous state.', 'success');
-            preImportBackup = null;
-        }
+        entries = JSON.parse(JSON.stringify(preImportBackup));
+        saveEntries();
+        renderList();
+        renderFilters();
+        
+        showImportStatus('Import undone. Database reverted to previous state.', 'success');
+        preImportBackup = null;
+        closeUndoModal();
     }
 
     function importVocabulary(event) {
@@ -839,8 +847,9 @@
             parts.push(`Updated: ${importStats.updated}`);
         }
         
+        const hasChanges = totalAdded > 0 || importStats.updated > 0;
         const msg = parts.length > 0 ? `Import Log:\n${parts.join('\n')}` : "Import complete: No changes made.";
-        showImportStatus(msg, 'success', true);
+        showImportStatus(msg, 'success', hasChanges);
     }
     
     function showImportStatus(message, type, showUndo = false) {
