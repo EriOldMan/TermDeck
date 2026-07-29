@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Term Deck</title>
+<link rel="stylesheet" href="styles.css">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+
+<div class="card board-card">
+    <div class="board-header">
+        <div id="boardStatusBadge" class="status-badge offline">Offline (Local Storage)</div>
+    </div>
+    <div class="board-controls">
+        <button id="createBoardBtn" onclick="createSharedBoard()">🌐 Create New Shared Board</button>
+        <div class="join-container">
+            <input id="joinBoardInput" type="text" placeholder="Enter Board ID" onkeypress="if(event.key==='Enter') joinSharedBoard()">
+            <button id="joinBoardBtn" class="import-btn" onclick="joinSharedBoard()">Join</button>
+        </div>
+        <button id="leaveBoardBtn" class="btn-danger" style="display:none;" onclick="leaveSharedBoard()">Leave Board</button>
+    </div>
+</div>
+
+<h2>✨ Add Vocabulary</h2>
+<div class="card">
+    <div class="input-container">
+        <input id="termInput" type="text" placeholder="Term" onkeypress="handleKeyPress(event)">
+        <div id="dropdown" class="dropdown"></div>
+    </div>
+    <div class="input-container">
+        <input id="translationInput" type="text" placeholder="Translation" onkeypress="handleKeyPress(event)">
+        <div id="translationDropdown" class="dropdown"></div>
+    </div>
+    <div class="tag-input-container">
+        <input id="tagInput" type="text" placeholder="Type tag & press Enter" oninput="handleTagSearch()" onfocus="handleTagSearch()" onblur="hideTagDropdown()" onkeypress="handleKeyPress(event)">
+        <div id="tagDropdown" class="tag-dropdown"></div>
+    </div>
+    <div id="activeTags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
+    <div class="color-picker">
+        <div class="color-option blue selected" data-color="blue" onclick="selectColor('blue')"></div>
+        <div class="color-option red" data-color="red" onclick="selectColor('red')"></div>
+        <div class="color-option green" data-color="green" onclick="selectColor('green')"></div>
+        <div class="color-option yellow" data-color="yellow" onclick="selectColor('yellow')"></div>
+        <div class="color-option purple" data-color="purple" onclick="selectColor('purple')"></div>
+        <div class="color-option orange" data-color="orange" onclick="selectColor('orange')"></div>
+        <div class="color-option pink" data-color="pink" onclick="selectColor('pink')"></div>
+        <div class="color-option teal" data-color="teal" onclick="selectColor('teal')"></div>
+    </div>
+    <button style="margin-top: 8px;" onclick="addItem()">➕</button>
+</div>
+
+<h2>📚 Your Vocabulary</h2>
+<div class="card">
+    <div id="filterContainer" class="filter-container"></div>
+    <div id="list"></div>
+    <div class="export-import-container">
+        <button onclick="exportVocabulary()">📤 Export</button>
+        <button class="import-btn" onclick="document.getElementById('importFile').click()">📥 Import</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" onchange="importVocabulary(event)">
+    <div id="importStatus" class="import-status"></div>
+</div>
+
+<div id="clearConfirmModal" class="modal-overlay">
+    <div class="modal">
+        <h3>⚠️ Clear Tab</h3>
+        <p style="margin-top: 8px; opacity: 0.8; font-size: 14px;">
+            Are you sure you want to delete <span id="clearCount" style="font-weight:bold"></span> entries from "<span id="clearTagName" style="font-weight:bold"></span>"?
+            <br><br>
+            This action cannot be undone.
+        </p>
+        
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="document.getElementById('clearConfirmModal').style.display='none'">Cancel</button>
+            <button class="btn-danger" onclick="confirmClearTab()">Delete All</button>
+        </div>
+    </div>
+</div>
+
+<div id="manualCollisionModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Duplicate Entry Detected</h3>
+        <p style="margin-top: 8px; opacity: 0.8; font-size: 14px;">
+            An entry with the term "<span id="manualCollisionTerm" style="font-weight:bold"></span>" already exists with the same translation but different tags.
+        </p>
+        
+        <div class="comparison-grid">
+            <div class="comparison-col">
+                <h4>Existing Entry</h4>
+                <div class="comparison-box" id="manualExistingEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+            <div class="comparison-col">
+                <h4>New Entry</h4>
+                <div class="comparison-box" id="manualNewEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="resolveManualCollision('cancel')">Cancel</button>
+            <button onclick="resolveManualCollision('merge')">Add New Tags</button>
+            <button class="btn-danger" onclick="resolveManualCollision('overwrite')">Overwrite</button>
+        </div>
+    </div>
+</div>
+
+<div id="collisionModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Import Conflict Detected</h3>
+        <p style="margin-top: 8px; opacity: 0.8; font-size: 14px;">
+            An entry with the term "<span id="collisionTerm" style="font-weight:bold"></span>" already exists but has different details.
+        </p>
+        
+        <div class="comparison-grid">
+            <div class="comparison-col">
+                <h4>Existing Entry</h4>
+                <div class="comparison-box" id="existingEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+            <div class="comparison-col">
+                <h4>New Entry</h4>
+                <div class="comparison-box" id="newEntryDetails">
+                    <!-- populated by js -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="resolveCollision('skip')">Keep Existing</button>
+            <button onclick="resolveCollision('keepBoth')">Keep Both</button>
+            <button class="btn-danger" onclick="resolveCollision('overwrite')">Overwrite</button>
+        </div>
+        <div style="text-align: center; margin-top: 10px; font-size: 12px; opacity: 0.6;">
+            Conflict <span id="conflictCount">1</span> of <span id="conflictTotal">1</span>
+        </div>
+    </div>
+</div>
+
+<div id="undoConfirmModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Undo Last Import?</h3>
+        <p style="margin-top: 12px; margin-bottom: 24px; opacity: 0.8; line-height: 1.5;">
+            Are you sure you want to undo the last import? This will revert all changes made to your vocabulary list, including added entries and merged tags.
+        </p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeUndoModal()">Cancel</button>
+            <button class="btn-danger" onclick="confirmUndo()">Yes, Revert Changes</button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
